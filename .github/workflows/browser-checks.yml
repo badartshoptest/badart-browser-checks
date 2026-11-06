@@ -89,6 +89,7 @@ jobs:
           echo 'Umgebungsaufbau fehlgeschlagen oder Lauf abgebrochen. Kein Shop-PASS.' >> "$GITHUB_STEP_SUMMARY"
       - name: Mobile Prozesse beenden
         if: always() && matrix.mobile
+        timeout-minutes: 2
         run: |
           pkill -f '[a]ppium' || true
           if [[ "$RUNNER_OS" == 'macOS' ]]; then xcrun simctl shutdown all || true; fi
