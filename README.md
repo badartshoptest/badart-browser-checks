@@ -11,14 +11,14 @@ in der frischen Sitzung vorhanden ist. Ein gesonderter Fall zeigt, ob die Auswah
 tatsaechlich ausgefuehrt werden konnte. Es besteht kein Zeitplan und keine Ueberwachung
 im Hintergrund. Ein weiterer Start wartet auf den vorherigen Durchlauf.
 
-Jeder Lauf prueft acht Ziele, hoechstens vier gleichzeitig. Der Ergebnisbericht steht
+Die Auswahl `all` prueft acht Ziele, hoechstens vier gleichzeitig. `desktop`, `mobile`, `apple`, `android` und einzelne Browser/Geraete ermoeglichen gezielte Wiederholungen. Der Ergebnisbericht steht
 direkt in der Zusammenfassung des jeweiligen Actions-Jobs. Er nennt Browser, Version,
 Betriebssystem, Simulator/Emulator und jeden Testfall.
 
 | Ziel | Ausfuehrung | Grenze |
 |---|---|---|
 | Chrome, Edge, Firefox | Originalbrowser auf Windows-2025-Runner | Windows Server, kein Nachweis fuer alle Windows-PCs |
-| Safari | Originalbrowser auf macOS-15-Runner | Die dort installierte Version |
+| Safari | Originalbrowser auf gewaehltem macOS-Standardimage | Die dort installierte Version |
 | iPhone und iPad | Safari im Apple-Simulator | Neuester passender installierter iOS-Runtime; kein physisches Geraet |
 | Android-Handy | Chrome im Android-15-Emulator | Pixel-7-Profil, keine OEM-Vollabdeckung |
 | Android-Tablet | Derselbe Emulator mit Tablet-Aufloesung und -Dichte | Generisches Tablet-Profil, kein bestimmtes physisches Tablet |
