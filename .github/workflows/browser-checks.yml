@@ -19,17 +19,17 @@ jobs:
     name: ${{ matrix.target }}
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         include:
+          - {target: android-phone, os: ubuntu-24.04, mobile: true}
+          - {target: android-tablet, os: ubuntu-24.04, mobile: true}
           - {target: chrome, os: windows-2025, mobile: false}
           - {target: edge, os: windows-2025, mobile: false}
           - {target: firefox, os: windows-2025, mobile: false}
           - {target: safari, os: macos-15, mobile: false}
           - {target: iphone, os: macos-15, mobile: true}
           - {target: ipad, os: macos-15, mobile: true}
-          - {target: android-phone, os: ubuntu-24.04, mobile: true}
-          - {target: android-tablet, os: ubuntu-24.04, mobile: true}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
