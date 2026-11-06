@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from selenium import webdriver
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -240,7 +240,13 @@ def run():
             wait.until(EC.url_contains("/account/recover"))
             visible('input[type="email"]')
             driver.back()
-            visible("#loginMail")
+            try:
+                visible("#loginMail")
+            except TimeoutException:
+                state = driver.execute_script("return {path:location.pathname,ready:document.readyState,login:!!document.querySelector('#loginMail')}")
+                path = state["path"] if state["path"] in ("/account/login", "/account/recover", "/") else "other public path"
+                operation["name"] = "Back navigation: " + path + "; ready=" + str(state["ready"]) + "; login control exists=" + str(state["login"])
+                raise
             return "Recovery page and back navigation; no email requested"
         check("Password recovery navigation", recovery)
 
