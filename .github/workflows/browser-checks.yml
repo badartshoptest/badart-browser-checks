@@ -5,8 +5,14 @@ on:
       target:
         description: Alle Ziele oder gezielte Wiederholungspruefung
         type: choice
-        options: [all, desktop, mobile, chrome, edge, firefox, safari, iphone, ipad, android-phone, android-tablet]
+        options: [all, desktop, mobile, apple, android, chrome, edge, firefox, safari, iphone, ipad, android-phone, android-tablet]
         default: all
+        required: true
+      apple_runner:
+        description: Kostenloses Apple-Standardimage (Version steht im Bericht)
+        type: choice
+        options: [macos-15-intel, macos-15, macos-26]
+        default: macos-15-intel
         required: true
       consent:
         description: Cookie-Auswahl im frischen Testbrowser
@@ -27,8 +33,8 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        include: ${{ fromJSON('{"all":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"desktop":[{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false}],"mobile":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android-phone":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true}],"android-tablet":[{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}],"chrome":[{"target":"chrome","os":"windows-2025","mobile":false}],"edge":[{"target":"edge","os":"windows-2025","mobile":false}],"firefox":[{"target":"firefox","os":"windows-2025","mobile":false}],"safari":[{"target":"safari","os":"macos-15","mobile":false}],"iphone":[{"target":"iphone","os":"macos-15","mobile":true}],"ipad":[{"target":"ipad","os":"macos-15","mobile":true}]}')[inputs.target] }}
-    runs-on: ${{ matrix.os }}
+        include: ${{ fromJSON('{"all":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"desktop":[{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false}],"mobile":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android-phone":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true}],"android-tablet":[{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}],"chrome":[{"target":"chrome","os":"windows-2025","mobile":false}],"edge":[{"target":"edge","os":"windows-2025","mobile":false}],"firefox":[{"target":"firefox","os":"windows-2025","mobile":false}],"safari":[{"target":"safari","os":"macos-15","mobile":false}],"iphone":[{"target":"iphone","os":"macos-15","mobile":true}],"ipad":[{"target":"ipad","os":"macos-15","mobile":true}],"apple":[{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}]}')[inputs.target] }}
+    runs-on: ${{ matrix.os == 'macos-15' && inputs.apple_runner || matrix.os }}
     timeout-minutes: 25
     env:
       TARGET: ${{ matrix.target }}
