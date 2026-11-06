@@ -11,7 +11,7 @@ in der frischen Sitzung vorhanden ist. Ein gesonderter Fall zeigt, ob die Auswah
 tatsaechlich ausgefuehrt werden konnte. Es besteht kein Zeitplan und keine Ueberwachung
 im Hintergrund. Ein weiterer Start wartet auf den vorherigen Durchlauf.
 
-Jeder Lauf prueft acht Ziele, hoechstens zwei gleichzeitig. Der Ergebnisbericht steht
+Jeder Lauf prueft acht Ziele, hoechstens vier gleichzeitig. Der Ergebnisbericht steht
 direkt in der Zusammenfassung des jeweiligen Actions-Jobs. Er nennt Browser, Version,
 Betriebssystem, Simulator/Emulator und jeden Testfall.
 

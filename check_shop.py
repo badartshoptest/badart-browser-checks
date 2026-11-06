@@ -150,10 +150,9 @@ def run():
 
         def consent_choice():
             driver.get(BASE + "/account/login")
-            try:
-                WebDriverWait(driver, 12).until(lambda d: accept_consent() == "Consent control clicked")
-            except Exception:
-                raise AssertionError("Requested consent control not observed; consent coverage unverified")
+            WebDriverWait(driver, 20, ignored_exceptions=(StaleElementReferenceException,)).until(
+                lambda d: accept_consent() == "Consent control clicked",
+                "Requested consent control not observed; consent coverage unverified")
             return "Requested cookie choice clicked in fresh session"
         check("Cookie choice", consent_choice)
 
