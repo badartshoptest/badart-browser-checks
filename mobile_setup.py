@@ -62,10 +62,18 @@ def main():
         sdkmanager = str(sdk / "cmdline-tools/latest/bin/sdkmanager")
         avdmanager = str(sdk / "cmdline-tools/latest/bin/avdmanager")
         adb = str(sdk / "platform-tools/adb")
+        # Recent avdmanager and emulator releases use different default user directories.
+        android_user = Path("ci-android").resolve()
+        avd_home = android_user / "avd"
+        avd_home.mkdir(parents=True, exist_ok=True)
+        os.environ["ANDROID_USER_HOME"] = str(android_user)
+        os.environ["ANDROID_AVD_HOME"] = str(avd_home)
         image = "system-images;android-35;google_apis_playstore;x86_64"
         subprocess.run([sdkmanager, "platform-tools", "emulator", image], check=True, timeout=600)
         subprocess.run([avdmanager, "create", "avd", "--name", "badart-ci", "--package", image,
-                        "--device", "pixel_7"], input="no\n", text=True, check=True, timeout=120)
+                        "--device", "pixel_7", "--path", str(avd_home / "badart-ci.avd")], input="no\n", text=True, check=True, timeout=120)
+        if "badart-ci" not in command(str(sdk / "emulator/emulator"), "-list-avds").splitlines():
+            raise RuntimeError("Created Android device is not discoverable by the emulator")
         with open("emulator.log", "w") as log:
             emulator = subprocess.Popen([str(sdk / "emulator/emulator"), "-avd", "badart-ci", "-no-window",
                               "-no-audio", "-no-boot-anim", "-no-snapshot", "-gpu", "software",

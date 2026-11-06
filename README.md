@@ -9,7 +9,7 @@ Unter **Actions → BADART Browser- und Geraetepruefung → Run workflow** start
 `necessary` waehlt notwendige Cookies, `all` alle Cookies, soweit die Schaltflaeche
 in der frischen Sitzung vorhanden ist. Ein gesonderter Fall zeigt, ob die Auswahl
 tatsaechlich ausgefuehrt werden konnte. Es besteht kein Zeitplan und keine Ueberwachung
-im Hintergrund. Ein weiterer Start wartet auf den vorherigen Durchlauf.
+im Hintergrund. Dasselbe Browser-/Systemziel laeuft hoechstens einmal gleichzeitig. Unabhaengige Ziele koennen parallel laufen; gezielte Wiederholungen muessen daher nicht auf einen anderen Simulator warten.
 
 Die Auswahl `all` prueft acht Ziele, hoechstens vier gleichzeitig. `desktop`, `mobile`, `apple`, `android` und einzelne Browser/Geraete ermoeglichen gezielte Wiederholungen. Der Ergebnisbericht steht
 direkt in der Zusammenfassung des jeweiligen Actions-Jobs. Er nennt Browser, Version,
