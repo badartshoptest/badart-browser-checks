@@ -1,5 +1,8 @@
 name: BADART Browser- und Geraetepruefung
 on:
+  push:
+    branches: [main]
+    paths: [check_shop.py, mobile_setup.py, test_mechanism.py, requirements.txt, .github/workflows/browser-checks.yml]
   workflow_dispatch:
     inputs:
       target:
@@ -23,25 +26,25 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: badart-suite-${{ inputs.target }}-${{ inputs.apple_runner }}
+  group: badart-suite-${{ inputs.target || 'all' }}-${{ inputs.apple_runner || 'macos-15-intel' }}
   cancel-in-progress: false
 jobs:
   baseline:
     if: github.repository == 'badartshoptest/badart-browser-checks' && github.event.repository.private == false
     name: ${{ matrix.target }}
     concurrency:
-      group: badart-target-${{ matrix.target }}-${{ matrix.os == 'macos-15' && inputs.apple_runner || matrix.os }}
+      group: badart-target-${{ matrix.target }}-${{ matrix.os == 'macos-15' && (inputs.apple_runner || 'macos-15-intel') || matrix.os }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        include: ${{ fromJSON('{"all":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"desktop":[{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false}],"mobile":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android-phone":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true}],"android-tablet":[{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}],"chrome":[{"target":"chrome","os":"windows-2025","mobile":false}],"edge":[{"target":"edge","os":"windows-2025","mobile":false}],"firefox":[{"target":"firefox","os":"windows-2025","mobile":false}],"safari":[{"target":"safari","os":"macos-15","mobile":false}],"iphone":[{"target":"iphone","os":"macos-15","mobile":true}],"ipad":[{"target":"ipad","os":"macos-15","mobile":true}],"apple":[{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}]}')[inputs.target] }}
-    runs-on: ${{ matrix.os == 'macos-15' && inputs.apple_runner || matrix.os }}
+        include: ${{ fromJSON('{"all":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"desktop":[{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false}],"mobile":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android-phone":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true}],"android-tablet":[{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}],"chrome":[{"target":"chrome","os":"windows-2025","mobile":false}],"edge":[{"target":"edge","os":"windows-2025","mobile":false}],"firefox":[{"target":"firefox","os":"windows-2025","mobile":false}],"safari":[{"target":"safari","os":"macos-15","mobile":false}],"iphone":[{"target":"iphone","os":"macos-15","mobile":true}],"ipad":[{"target":"ipad","os":"macos-15","mobile":true}],"apple":[{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}]}')[inputs.target || 'all'] }}
+    runs-on: ${{ matrix.os == 'macos-15' && (inputs.apple_runner || 'macos-15-intel') || matrix.os }}
     timeout-minutes: 25
     env:
       TARGET: ${{ matrix.target }}
-      CONSENT: ${{ inputs.consent }}
+      CONSENT: ${{ inputs.consent || 'necessary' }}
       PYTHONUTF8: '1'
     defaults:
       run:
