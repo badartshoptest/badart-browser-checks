@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from selenium import webdriver
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -97,7 +98,7 @@ def run():
         expected = "safari" if TARGET in ("safari", "iphone", "ipad") else "chrome" if TARGET.startswith("android-") else TARGET
         actual = str(caps.get("browserName", "")).lower().replace("microsoftedge", "edge")
         require(actual == expected, "Unexpected browser engine")
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 20, ignored_exceptions=(StaleElementReferenceException,))
         driver.set_page_load_timeout(50)
         if TARGET in ("chrome", "edge", "firefox", "safari"):
             driver.set_window_size(1440, 1000)
@@ -131,8 +132,14 @@ def run():
 
         def check(name, fn):
             try:
-                detail = fn()
-                REPORT["checks"].append({"name": name, "status": "PASS", "detail": detail or "Verified"})
+                retries = 0
+                try:
+                    detail = fn()
+                except StaleElementReferenceException:
+                    # These checks never submit, order or send mail. Reload once after hydration.
+                    retries = 1
+                    detail = fn()
+                REPORT["checks"].append({"name": name, "status": "PASS", "detail": (detail or "Verified") + ("; DOM refresh retry" if retries else "")})
             except Blocked as exc:
                 REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": str(exc)})
                 raise
@@ -206,7 +213,7 @@ def run():
 
         def recovery():
             open_page("/account/login")
-            click('a[href="/account/recover"]')
+            click('a[href$="/account/recover"]')
             wait.until(EC.url_contains("/account/recover"))
             visible('input[type="email"]')
             driver.back()
@@ -228,8 +235,7 @@ def run():
             products = [e for e in driver.find_elements(By.CSS_SELECTOR, "a.product-name") if e.is_displayed()]
             require(bool(products), "No visible products in Wohnen listing")
             products[0].click()
-            visible(".product-detail")
-            require(bool(visible("h1").text.strip()), "Product name missing")
+            require(bool(visible("h1.product-detail-name").text.strip()), "Product name missing")
             visible(".product-detail-price")
             return "Listing, product navigation and price visible; no cart mutation"
         check("Listing and product detail", catalog)
