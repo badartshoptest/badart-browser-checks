@@ -54,7 +54,7 @@ Zahlung. Diese Faelle werden nicht durch reine Seitenaufrufe als bestanden marki
 
 ## Kosten und Schutz
 
-Nur manuell gestartete Standard-GitHub-Runner im freigegebenen oeffentlichen Original-
+Nur manuell oder durch Testcode-Aenderungen gestartete Standard-GitHub-Runner im freigegebenen oeffentlichen Original-
 Repository. Keine kostenpflichtigen Zusatzdienste, keine Artefakt-Uploads und keine
 Caches. Der Job startet nicht in privaten Repositories oder Forks. Die vorhandenen
 kostenlosen GitHub-Bedingungen und Nutzungsgrenzen gelten; kuenftige Tarifaenderungen
