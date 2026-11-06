@@ -1,0 +1,91 @@
+name: BADART Browser- und Geraetepruefung
+on:
+  workflow_dispatch:
+    inputs:
+      consent:
+        description: Cookie-Auswahl im frischen Testbrowser
+        type: choice
+        options: [necessary, all]
+        default: necessary
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: badart-storefront-checks
+  cancel-in-progress: false
+jobs:
+  baseline:
+    if: github.repository == 'badartshoptest/badart-browser-checks' && github.event.repository.private == false
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - {target: chrome, os: windows-2025, mobile: false}
+          - {target: edge, os: windows-2025, mobile: false}
+          - {target: firefox, os: windows-2025, mobile: false}
+          - {target: safari, os: macos-15, mobile: false}
+          - {target: iphone, os: macos-15, mobile: true}
+          - {target: ipad, os: macos-15, mobile: true}
+          - {target: android-phone, os: ubuntu-24.04, mobile: true}
+          - {target: android-tablet, os: ubuntu-24.04, mobile: true}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      TARGET: ${{ matrix.target }}
+      CONSENT: ${{ inputs.consent }}
+      PYTHONUTF8: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Testcode lesen
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Python-Pakete
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Bericht und Simulatorauswahl selbst pruefen
+        run: python -m unittest -v test_mechanism
+      - name: Safari aktivieren
+        if: matrix.target == 'safari'
+        run: sudo /usr/bin/safaridriver --enable
+      - name: Node fuer Appium
+        if: matrix.mobile
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Appium installieren
+        if: matrix.mobile
+        run: npm install --global appium@3.9.0
+      - name: Apple-Treiber installieren
+        if: matrix.target == 'iphone' || matrix.target == 'ipad'
+        run: appium driver install xcuitest@13.0.7
+      - name: Android-Treiber installieren
+        if: startsWith(matrix.target, 'android-')
+        run: |
+          appium driver install uiautomator2@9.0.1
+          sudo chmod a+rw /dev/kvm
+      - name: Simulator oder Emulator starten
+        if: matrix.mobile
+        run: python mobile_setup.py
+      - name: Shop-Grundpruefungen ausfuehren
+        id: checks
+        run: python check_shop.py
+      - name: Fehlenden Testlauf kenntlich machen
+        if: always() && steps.checks.outcome != 'success' && steps.checks.outcome != 'failure'
+        run: |
+          echo '## BLOCKED: Shop-Prueflauf wurde nicht ausgefuehrt' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Umgebungsaufbau fehlgeschlagen oder Lauf abgebrochen. Kein Shop-PASS.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Mobile Prozesse beenden
+        if: always() && matrix.mobile
+        run: |
+          pkill -f '[a]ppium' || true
+          if [[ "$RUNNER_OS" == 'macOS' ]]; then xcrun simctl shutdown all || true; fi
+          if [[ "$RUNNER_OS" == 'Linux' ]]; then adb emu kill || true; fi
