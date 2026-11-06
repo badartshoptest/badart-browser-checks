@@ -23,12 +23,15 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: badart-storefront-checks
+  group: badart-suite-${{ inputs.target }}-${{ inputs.apple_runner }}
   cancel-in-progress: false
 jobs:
   baseline:
     if: github.repository == 'badartshoptest/badart-browser-checks' && github.event.repository.private == false
     name: ${{ matrix.target }}
+    concurrency:
+      group: badart-target-${{ matrix.target }}-${{ matrix.os == 'macos-15' && inputs.apple_runner || matrix.os }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       max-parallel: 4
