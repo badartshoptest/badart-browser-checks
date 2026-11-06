@@ -2,6 +2,12 @@ name: BADART Browser- und Geraetepruefung
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: Alle Ziele oder gezielte Wiederholungspruefung
+        type: choice
+        options: [all, desktop, mobile, chrome, edge, firefox, safari, iphone, ipad, android-phone, android-tablet]
+        default: all
+        required: true
       consent:
         description: Cookie-Auswahl im frischen Testbrowser
         type: choice
@@ -21,15 +27,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        include:
-          - {target: android-phone, os: ubuntu-24.04, mobile: true}
-          - {target: android-tablet, os: ubuntu-24.04, mobile: true}
-          - {target: chrome, os: windows-2025, mobile: false}
-          - {target: edge, os: windows-2025, mobile: false}
-          - {target: firefox, os: windows-2025, mobile: false}
-          - {target: safari, os: macos-15, mobile: false}
-          - {target: iphone, os: macos-15, mobile: true}
-          - {target: ipad, os: macos-15, mobile: true}
+        include: ${{ fromJSON('{"all":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"desktop":[{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false}],"mobile":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android-phone":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true}],"android-tablet":[{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}],"chrome":[{"target":"chrome","os":"windows-2025","mobile":false}],"edge":[{"target":"edge","os":"windows-2025","mobile":false}],"firefox":[{"target":"firefox","os":"windows-2025","mobile":false}],"safari":[{"target":"safari","os":"macos-15","mobile":false}],"iphone":[{"target":"iphone","os":"macos-15","mobile":true}],"ipad":[{"target":"ipad","os":"macos-15","mobile":true}]}')[inputs.target] }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -66,11 +64,11 @@ jobs:
         run: npm install --global appium@3.9.0
       - name: Apple-Treiber installieren
         if: matrix.target == 'iphone' || matrix.target == 'ipad'
-        run: appium driver install xcuitest@13.0.7
+        run: appium driver install xcuitest@12.22.8
       - name: Android-Treiber installieren
         if: startsWith(matrix.target, 'android-')
         run: |
-          appium driver install uiautomator2@9.0.1
+          appium driver install uiautomator2@8.7.3
           sudo chmod a+rw /dev/kvm
       - name: Simulator oder Emulator starten
         if: matrix.mobile
@@ -88,4 +86,4 @@ jobs:
         run: |
           pkill -f '[a]ppium' || true
           if [[ "$RUNNER_OS" == 'macOS' ]]; then xcrun simctl shutdown all || true; fi
-          if [[ "$RUNNER_OS" == 'Linux' ]]; then adb emu kill || true; fi
+          if [[ "$RUNNER_OS" == 'Linux' ]]; then "$ANDROID_HOME/platform-tools/adb" emu kill || true; fi
