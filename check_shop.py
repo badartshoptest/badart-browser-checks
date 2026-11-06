@@ -5,6 +5,7 @@ import os
 import platform
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -99,11 +100,13 @@ def run():
         actual = str(caps.get("browserName", "")).lower().replace("microsoftedge", "edge")
         require(actual == expected, "Unexpected browser engine")
         wait = WebDriverWait(driver, 20, ignored_exceptions=(StaleElementReferenceException,))
+        operation = {"name": "Browser initialization"}
         driver.set_page_load_timeout(50)
         if TARGET in ("chrome", "edge", "firefox", "safari"):
             driver.set_window_size(1440, 1000)
 
         def visible(selector):
+            operation["name"] = "Visible control " + selector
             return wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
 
         def click(selector):
@@ -113,22 +116,31 @@ def run():
 
         def accept_consent():
             wanted = ["Nur notwendige", "Nur technisch notwendige", "Nur technisch notwendige Cookies", "Ablehnen"] if CONSENT == "necessary" else ["Alle akzeptieren", "Alle Cookies akzeptieren"]
-            for element in driver.find_elements(By.CSS_SELECTOR, "button, a.btn"):
-                if element.is_displayed() and element.text.strip() in wanted:
-                    element.click()
-                    return "Consent control clicked"
+            element = driver.execute_script("return Array.from(document.querySelectorAll('button, a.btn')).find(e => e.getClientRects().length && arguments[0].includes(e.innerText.trim())) || null", wanted)
+            if element is not None:
+                element.click()
+                return "Consent control clicked"
             # No success claim about consent if a fresh session has no matching control.
             return "No matching consent control visible"
 
         def open_page(path):
+            operation["name"] = "Open " + path
             driver.get(BASE + path)
             wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
             require(urlsplit(driver.current_url).hostname in ("www.badart-shop.de", "badart-shop.de"), "Unexpected navigation origin")
-            body = driver.find_element(By.TAG_NAME, "body").text.lower()
+            body = driver.execute_script("return document.body.innerText").lower()
             if any(s in body for s in ("verify you are human", "checking your browser", "access denied", "just a moment")):
                 raise Blocked("Site security challenge")
             accept_consent()
             visible("#content-main")
+            # Wait for the initial storefront hydration, without masking failed assertions.
+            stable = {"signature": None, "since": time.monotonic()}
+            def content_settled(d):
+                signature = d.execute_script("const e=document.querySelector('#content-main'); return e ? [location.href,e.textContent.length,e.childElementCount] : null")
+                if signature != stable["signature"]:
+                    stable.update(signature=signature, since=time.monotonic())
+                return signature is not None and time.monotonic() - stable["since"] >= 0.8
+            wait.until(content_settled)
 
         def check(name, fn):
             try:
@@ -146,7 +158,7 @@ def run():
             except AssertionError as exc:
                 REPORT["checks"].append({"name": name, "status": "FAIL", "detail": str(exc)})
             except Exception as exc:
-                REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; inspect selector, overlay or infrastructure"})
+                REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; " + operation["name"]})
 
         def consent_choice():
             driver.get(BASE + "/account/login")
@@ -197,7 +209,7 @@ def run():
                 label = "Österreich" if name == "Oesterreich" else name
                 select = Select(visible("#billingAddressAddressCountry"))
                 select.select_by_visible_text(label)
-                require(select.first_selected_option.text.strip() == label, "Country selection failed")
+                wait.until(lambda d: Select(d.find_element(By.ID, "billingAddressAddressCountry")).first_selected_option.text.strip() == label)
             return "DE, AT and CH selectable; no tax or shipping total assertion"
         check("Country selection", countries)
 
@@ -213,6 +225,7 @@ def run():
         def recovery():
             open_page("/account/login")
             click('a[href$="/account/recover"]')
+            operation["name"] = "Recovery URL after link click"
             wait.until(EC.url_contains("/account/recover"))
             visible('input[type="email"]')
             driver.back()
@@ -231,9 +244,7 @@ def run():
 
         def catalog():
             open_page("/wohnen/")
-            products = [e for e in driver.find_elements(By.CSS_SELECTOR, "a.product-name") if e.is_displayed()]
-            require(bool(products), "No visible products in Wohnen listing")
-            products[0].click()
+            click("a.product-name")
             require(bool(visible("h1.product-detail-name").text.strip()), "Product name missing")
             visible(".product-detail-price")
             return "Listing, product navigation and price visible; no cart mutation"

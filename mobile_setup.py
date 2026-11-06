@@ -62,10 +62,18 @@ def main():
         subprocess.run([avdmanager, "create", "avd", "--name", "badart-ci", "--package", image,
                         "--device", "pixel_7"], input="no\n", text=True, check=True, timeout=120)
         with open("emulator.log", "w") as log:
-            subprocess.Popen([str(sdk / "emulator/emulator"), "-avd", "badart-ci", "-no-window",
-                              "-no-audio", "-no-boot-anim", "-no-snapshot", "-gpu", "swiftshader_indirect",
+            emulator = subprocess.Popen([str(sdk / "emulator/emulator"), "-avd", "badart-ci", "-no-window",
+                              "-no-audio", "-no-boot-anim", "-no-snapshot", "-gpu", "software",
                               "-memory", "3072"], stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-        subprocess.run([adb, "wait-for-device"], check=True, timeout=240)
+        end = time.monotonic() + 240
+        while True:
+            if emulator.poll() is not None or time.monotonic() > end:
+                # Boot-only infrastructure log: no browser session, account or shop form exists yet.
+                print("Emulator startup diagnostics:", Path("emulator.log").read_text(errors="replace")[-10000:])
+                raise RuntimeError("Android emulator exited or did not connect to adb")
+            if "emulator-5554\tdevice" in command(adb, "devices"):
+                break
+            time.sleep(3)
         end = time.monotonic() + 240
         while command(adb, "shell", "getprop", "sys.boot_completed") != "1":
             if time.monotonic() > end:
