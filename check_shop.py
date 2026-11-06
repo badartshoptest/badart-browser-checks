@@ -88,7 +88,14 @@ def write_report():
 def run():
     driver = None
     try:
-        driver = create_driver()
+        try:
+            driver = create_driver()
+        except Exception as exc:
+            # This occurs before opening the shop: only a bounded, sanitized setup diagnostic.
+            message = str(exc).split("Stacktrace:")[0].split("Original error:")[-1]
+            message = re.sub(r"https?://\S+|[\w.+-]+@[\w.-]+", "[redacted]", message)
+            REPORT["checks"].append({"name": "Driver startup diagnostic", "status": "BLOCKED", "detail": safe_text(message)})
+            raise
         caps = driver.capabilities
         REPORT["environment"] = {k: safe_text(caps.get(k, "not reported")) for k in
                                  ("browserName", "browserVersion", "platformName", "platformVersion")}
@@ -96,6 +103,10 @@ def run():
         REPORT["environment"]["device_kind"] = (
             "Apple simulator" if TARGET in ("iphone", "ipad") else
             "Android emulator" if TARGET.startswith("android-") else "Desktop browser on hosted runner")
+        if TARGET in ("iphone", "ipad", "android-phone", "android-tablet"):
+            requested = json.loads(Path("mobile-capabilities.json").read_text())
+            REPORT["environment"]["device_name"] = safe_text(requested["appium:deviceName"])
+            REPORT["environment"]["requested_os_version"] = safe_text(requested.get("appium:platformVersion", "Android 15"))
         expected = "safari" if TARGET in ("safari", "iphone", "ipad") else "chrome" if TARGET.startswith("android-") else TARGET
         actual = str(caps.get("browserName", "")).lower().replace("microsoftedge", "edge")
         require(actual == expected, "Unexpected browser engine")

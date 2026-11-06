@@ -30,6 +30,9 @@ class MechanismTests(unittest.TestCase):
         }}
         self.assertEqual(choose_ios(data, "iphone")["appium:udid"], "old")
         self.assertEqual(choose_ios(data, "ipad")["appium:platformVersion"], "26.1")
+        self.assertEqual(choose_ios(data, "iphone", max_major=18)["appium:platformVersion"], "18.5")
+        with self.assertRaises(RuntimeError):
+            choose_ios(data, "ipad", max_major=18)
         with self.assertRaises(RuntimeError):
             choose_ios({"devices": {}}, "iphone")
 

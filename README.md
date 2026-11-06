@@ -19,7 +19,7 @@ Betriebssystem, Simulator/Emulator und jeden Testfall.
 |---|---|---|
 | Chrome, Edge, Firefox | Originalbrowser auf Windows-2025-Runner | Windows Server, kein Nachweis fuer alle Windows-PCs |
 | Safari | Originalbrowser auf gewaehltem macOS-Standardimage | Die dort installierte Version |
-| iPhone und iPad | Safari im Apple-Simulator | Neuester passender installierter iOS-Runtime; kein physisches Geraet |
+| iPhone und iPad | Safari im Apple-Simulator | Neuester zum aktiven Xcode-SDK passender installierter iOS-Runtime; kein physisches Geraet |
 | Android-Handy | Chrome im Android-15-Emulator | Pixel-7-Profil, keine OEM-Vollabdeckung |
 | Android-Tablet | Derselbe Emulator mit Tablet-Aufloesung und -Dichte | Generisches Tablet-Profil, kein bestimmtes physisches Tablet |
 

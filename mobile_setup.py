@@ -12,13 +12,15 @@ def command(*args, **kwargs):
     return subprocess.check_output(args, text=True, timeout=600, **kwargs).strip()
 
 
-def choose_ios(data, target):
+def choose_ios(data, target, max_major=None):
     prefix = "iPhone" if target == "iphone" else "iPad"
     candidates = []
     for runtime, devices in data["devices"].items():
         if ".iOS-" not in runtime:
             continue
         version = tuple(int(n) for n in re.findall(r"\d+", runtime.split(".iOS-")[1]))
+        if max_major is not None and version[0] > max_major:
+            continue
         for device in devices:
             if device.get("isAvailable") and device["name"].startswith(prefix):
                 candidates.append((version, device["name"], device["udid"]))
@@ -48,9 +50,12 @@ def wait_for_server(timeout=90):
 def main():
     target = os.environ["TARGET"]
     if target in ("iphone", "ipad"):
-        caps = choose_ios(json.loads(command("xcrun", "simctl", "list", "devices", "available", "--json")), target)
+        sdk_version = command("xcrun", "--sdk", "iphonesimulator", "--show-sdk-version")
+        caps = choose_ios(json.loads(command("xcrun", "simctl", "list", "devices", "available", "--json")), target,
+                          max_major=int(sdk_version.split(".")[0]))
+        print("Selected Apple simulator:", caps["appium:deviceName"], caps["appium:platformVersion"], "active SDK", sdk_version, flush=True)
         subprocess.run(["xcrun", "simctl", "boot", caps["appium:udid"]], check=True, timeout=120)
-        subprocess.run(["xcrun", "simctl", "bootstatus", caps["appium:udid"], "-b"], check=True, timeout=300)
+        subprocess.run(["xcrun", "simctl", "bootstatus", caps["appium:udid"], "-b"], check=True, timeout=600)
         appium_args = ["appium", "--address", "127.0.0.1", "--port", "4723", "--log-level", "error"]
     else:
         sdk = Path(os.environ["ANDROID_HOME"])
