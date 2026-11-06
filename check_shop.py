@@ -170,6 +170,8 @@ def run():
                 REPORT["checks"].append({"name": name, "status": "FAIL", "detail": str(exc)})
             except Exception as exc:
                 REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; " + operation["name"]})
+            finally:
+                print("CHECK " + json.dumps(REPORT["checks"][-1]), flush=True)
 
         def consent_choice():
             driver.get(BASE + "/account/login")

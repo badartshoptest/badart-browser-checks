@@ -34,9 +34,12 @@ def choose_ios(data, target, max_major=None):
             "appium:safariInitialUrl": "about:blank"}
 
 
-def wait_for_server(timeout=90):
+def wait_for_server(process, timeout=180):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
+        if process.poll() is not None:
+            print("Appium startup diagnostics:", Path("appium.log").read_text(errors="replace")[-10000:], flush=True)
+            raise RuntimeError("Appium exited before becoming ready")
         try:
             with urllib.request.urlopen("http://127.0.0.1:4723/status", timeout=3) as response:
                 if json.load(response).get("value", {}).get("ready"):
@@ -44,6 +47,7 @@ def wait_for_server(timeout=90):
         except Exception:
             pass
         time.sleep(2)
+    print("Appium startup diagnostics:", Path("appium.log").read_text(errors="replace")[-10000:], flush=True)
     raise RuntimeError("Appium did not become ready")
 
 
@@ -63,10 +67,12 @@ def main():
         avdmanager = str(sdk / "cmdline-tools/latest/bin/avdmanager")
         adb = str(sdk / "platform-tools/adb")
         # Recent avdmanager and emulator releases use different default user directories.
-        android_user = Path("ci-android").resolve()
-        avd_home = android_user / "avd"
+        android_user = Path.home() / ".android"
+        android_user.mkdir(parents=True, exist_ok=True)
+        avd_home = Path("ci-android/avd").resolve()
         avd_home.mkdir(parents=True, exist_ok=True)
         os.environ["ANDROID_USER_HOME"] = str(android_user)
+        os.environ["ANDROID_EMULATOR_HOME"] = str(android_user)
         os.environ["ANDROID_AVD_HOME"] = str(avd_home)
         image = "system-images;android-35;google_apis_playstore;x86_64"
         subprocess.run([sdkmanager, "platform-tools", "emulator", image], check=True, timeout=600)
@@ -74,6 +80,9 @@ def main():
                         "--device", "pixel_7", "--path", str(avd_home / "badart-ci.avd")], input="no\n", text=True, check=True, timeout=120)
         if "badart-ci" not in command(str(sdk / "emulator/emulator"), "-list-avds").splitlines():
             raise RuntimeError("Created Android device is not discoverable by the emulator")
+        # Establish the standard host key before the emulator imports trusted host keys.
+        subprocess.run([adb, "kill-server"], check=False, timeout=30)
+        subprocess.run([adb, "start-server"], check=True, timeout=30)
         with open("emulator.log", "w") as log:
             emulator = subprocess.Popen([str(sdk / "emulator/emulator"), "-avd", "badart-ci", "-no-window",
                               "-no-audio", "-no-boot-anim", "-no-snapshot", "-gpu", "software",
@@ -107,8 +116,8 @@ def main():
                        "--allow-insecure", "uiautomator2:chromedriver_autodownload"]
     Path("mobile-capabilities.json").write_text(json.dumps(caps), encoding="utf-8")
     with open("appium.log", "w") as log:
-        subprocess.Popen(appium_args, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-    wait_for_server()
+        appium = subprocess.Popen(appium_args, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    wait_for_server(appium)
     print("Mobile environment ready:", caps["appium:deviceName"], caps.get("appium:platformVersion", "Android 15"))
 
 
