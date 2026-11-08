@@ -1,0 +1,67 @@
+name: Matterport initial feasibility probe
+on:
+  workflow_dispatch:
+    inputs:
+      confirmed_run:
+        description: 'Confirm public tour probe with candidate keyboard movement'
+        required: true
+        type: boolean
+        default: false
+      capture_evidence:
+        description: 'Approve public-run screenshots and visible labels as 1-day artifacts'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: matterport-initial-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'badartshoptest/badart-browser-checks' &&
+      github.event.repository.private == false &&
+      github.event.repository.fork == false &&
+      github.ref == 'refs/heads/main' && inputs.confirmed_run == true
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    name: Matterport / ${{ matrix.browser }}
+    runs-on: windows-2025
+    timeout-minutes: 8
+    env:
+      PROBE_BROWSER: ${{ matrix.browser }}
+      CONFIRMED_RUN: ${{ inputs.confirmed_run }}
+      CAPTURE_EVIDENCE: ${{ inputs.capture_evidence }}
+      REPOSITORY_PUBLIC: ${{ github.event.repository.private == false }}
+      REPOSITORY_FORK: ${{ github.event.repository.fork }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Install isolated probe dependency
+        run: python -m pip install --disable-pip-version-check selenium==4.52.0
+      - name: Test reporting without starting browser
+        run: python -m unittest -v test_matterport_probe
+      - name: Collect first-stage observations (incomplete is nonzero)
+        run: python matterport_probe.py
+      - name: Upload explicitly approved public-tour evidence only
+        if: ${{ always() && inputs.confirmed_run == true && inputs.capture_evidence == true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # official v4 ref, verified 2026-11-08
+        with:
+          name: matterport-${{ matrix.browser }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            matterport-evidence/report.json
+            matterport-evidence/initial.png
+            matterport-evidence/candidate-forward.png
+            matterport-evidence/candidate-rotate.png
+            matterport-evidence/candidate-forward-2.png
+          if-no-files-found: error
+          retention-days: 1
+          include-hidden-files: false
