@@ -42,6 +42,15 @@ def safe_text(value):
     return re.sub(r"[^a-zA-Z0-9 .,_:/()@+\-]", "", str(value))[:180]
 
 
+def technical_error(exc):
+    """One bounded technical error line, without HTML, URLs or quoted values."""
+    message = str(exc).splitlines()[0] if str(exc) else ""
+    message = re.sub(r"<[^>]*>", "[element]", message)
+    message = re.sub(r"https?://\S+|[\w.+-]+@[\w.-]+", "[redacted]", message)
+    message = re.sub(r"\"[^\"]*\"|'[^']*'", "[value]", message)
+    return safe_text(message)
+
+
 def outcome(rows):
     if not rows or any(r["status"] == "BLOCKED" for r in rows):
         return 2
@@ -169,7 +178,7 @@ def run():
             except AssertionError as exc:
                 REPORT["checks"].append({"name": name, "status": "FAIL", "detail": str(exc)})
             except Exception as exc:
-                REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; " + operation["name"]})
+                REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; " + operation["name"] + "; " + technical_error(exc)})
             finally:
                 print("CHECK " + json.dumps(REPORT["checks"][-1]), flush=True)
 
