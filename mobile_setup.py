@@ -51,6 +51,42 @@ def wait_for_server(process, timeout=180):
     raise RuntimeError("Appium did not become ready")
 
 
+def wait_for_android_boot(adb, emulator, timeout=480):
+    """adb can briefly report online before Android reconnects during boot."""
+    end = time.monotonic() + timeout
+    consecutive_ready = 0
+    last_state = "not connected"
+    while time.monotonic() < end:
+        if emulator.poll() is not None:
+            raise RuntimeError("Android emulator exited during boot")
+        try:
+            result = subprocess.run(
+                [adb, "-s", "emulator-5554", "shell", "getprop", "sys.boot_completed"],
+                text=True, capture_output=True, check=False,
+                timeout=min(15, max(0.1, end - time.monotonic())))
+            if result.returncode == 0 and result.stdout.strip() == "1":
+                consecutive_ready += 1
+                if consecutive_ready >= 2:
+                    return
+                last_state = "boot completed, confirming stability"
+            else:
+                consecutive_ready = 0
+                error = result.stderr.lower()
+                if "unauthorized" in error:
+                    raise RuntimeError("Android emulator adb authorization failed")
+                if result.returncode and not any(s in error for s in
+                        ("offline", "not found", "no devices", "closed", "connecting")):
+                    raise RuntimeError("Android boot probe failed with exit code " + str(result.returncode))
+                last_state = "adb reconnecting" if result.returncode else "Android still booting"
+        except subprocess.TimeoutExpired:
+            consecutive_ready = 0
+            last_state = "adb probe timed out"
+        remaining = end - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(3, remaining))
+    raise RuntimeError("Android emulator boot timeout: " + last_state)
+
+
 def main():
     target = os.environ["TARGET"]
     if target in ("iphone", "ipad"):
@@ -87,20 +123,12 @@ def main():
             emulator = subprocess.Popen([str(sdk / "emulator/emulator"), "-avd", "badart-ci", "-no-window",
                               "-no-audio", "-no-boot-anim", "-no-snapshot", "-gpu", "software",
                               "-memory", "3072"], stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-        end = time.monotonic() + 240
-        while True:
-            if emulator.poll() is not None or time.monotonic() > end:
-                # Boot-only infrastructure log: no browser session, account or shop form exists yet.
-                print("Emulator startup diagnostics:", Path("emulator.log").read_text(errors="replace")[-10000:])
-                raise RuntimeError("Android emulator exited or did not connect to adb")
-            if "emulator-5554\tdevice" in command(adb, "devices"):
-                break
-            time.sleep(3)
-        end = time.monotonic() + 240
-        while command(adb, "shell", "getprop", "sys.boot_completed") != "1":
-            if time.monotonic() > end:
-                raise RuntimeError("Android emulator boot timeout")
-            time.sleep(3)
+        try:
+            wait_for_android_boot(adb, emulator)
+        except RuntimeError:
+            # Boot only: no browser session, account or shop form exists yet.
+            print("Emulator startup diagnostics:", Path("emulator.log").read_text(errors="replace")[-10000:])
+            raise
         command(adb, "shell", "input", "keyevent", "82")
         if target == "android-tablet":
             command(adb, "shell", "wm", "size", "1600x2560")
@@ -123,3 +151,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
