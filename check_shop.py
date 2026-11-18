@@ -15,6 +15,7 @@ from selenium.common.exceptions import StaleElementReferenceException, TimeoutEx
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.remote.locator_converter import LocatorConverter
 
 BASE = "https://www.badart-shop.de"
 TARGET = os.environ.get("TARGET", "chrome")
@@ -42,6 +43,15 @@ def safe_text(value):
     return re.sub(r"[^a-zA-Z0-9 .,_:/()@+\-]", "", str(value))[:180]
 
 
+def technical_error(exc):
+    """One bounded technical error line, without HTML, URLs or quoted values."""
+    message = str(exc).splitlines()[0] if str(exc) else ""
+    message = re.sub(r"<[^>]*>", "[element]", message)
+    message = re.sub(r"https?://\S+|[\w.+-]+@[\w.-]+", "[redacted]", message)
+    message = re.sub(r"\"[^\"]*\"|'[^']*'", "[value]", message)
+    return safe_text(message)
+
+
 def outcome(rows):
     if not rows or any(r["status"] == "BLOCKED" for r in rows):
         return 2
@@ -56,7 +66,11 @@ def create_driver():
         from appium import webdriver as mobile_webdriver
         from appium.options.common import AppiumOptions
         caps = json.loads(Path("mobile-capabilities.json").read_text())
-        return mobile_webdriver.Remote("http://127.0.0.1:4723", options=AppiumOptions().load_capabilities(caps))
+        driver = mobile_webdriver.Remote("http://127.0.0.1:4723", options=AppiumOptions().load_capabilities(caps))
+        # These sessions exclusively automate web pages. Appium's native converter
+        # leaves By.ID unchanged, which Chrome's W3C web endpoint rejects.
+        driver.locator_converter = LocatorConverter()
+        return driver
     options_cls, driver_cls = {
         "chrome": (webdriver.ChromeOptions, webdriver.Chrome),
         "edge": (webdriver.EdgeOptions, webdriver.Edge),
@@ -122,7 +136,9 @@ def run():
 
         def click(selector):
             element = visible(selector)
-            driver.execute_script("arguments[0].scrollIntoView({block:'center'})", element)
+            driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", element)
+            # Let scroll-linked headers settle; never force a click through an overlay.
+            wait.until(lambda d: d.execute_script("const e=arguments[0],r=e.getBoundingClientRect(); const p=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return p && (p===e || e.contains(p));", element))
             element.click()
 
         def accept_consent():
@@ -169,7 +185,7 @@ def run():
             except AssertionError as exc:
                 REPORT["checks"].append({"name": name, "status": "FAIL", "detail": str(exc)})
             except Exception as exc:
-                REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; " + operation["name"]})
+                REPORT["checks"].append({"name": name, "status": "BLOCKED", "detail": type(exc).__name__ + "; " + operation["name"] + "; " + technical_error(exc)})
             finally:
                 print("CHECK " + json.dumps(REPORT["checks"][-1]), flush=True)
 
@@ -210,9 +226,9 @@ def run():
 
         def shipping():
             open_page("/account/login")
-            click("#differentShippingAddress")
+            click('label[for="differentShippingAddress"]')
             visible("#shippingAddresspersonalFirstName")
-            click("#differentShippingAddress")
+            click('label[for="differentShippingAddress"]')
             wait.until(EC.invisibility_of_element_located((By.ID, "shippingAddresspersonalFirstName")))
         check("Different shipping address", shipping)
 
@@ -299,3 +315,4 @@ def run():
 
 if __name__ == "__main__":
     sys.exit(run())
+
