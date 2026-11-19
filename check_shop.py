@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from selenium import webdriver
-from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException, ElementClickInterceptedException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -139,7 +139,22 @@ def run():
             driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", element)
             # The browser driver handles hit testing in its own viewport coordinates.
             # A second JS hit test used layout coordinates and blocked valid iOS taps.
-            element.click()
+            stable = {"rect": None, "since": time.monotonic()}
+            def scroll_settled(d):
+                rect = d.execute_script("const r=arguments[0].getBoundingClientRect();return [Math.round(r.x),Math.round(r.y)]", element)
+                if rect != stable["rect"]:
+                    stable.update(rect=rect, since=time.monotonic())
+                return time.monotonic() - stable["since"] >= 0.6
+            wait.until(scroll_settled)
+            try:
+                element.click()
+            except ElementClickInterceptedException as exc:
+                point = re.search(r"point \((\d+), (\d+)\)", str(exc))
+                if point:
+                    # Only structural identifiers, never text, HTML or form values.
+                    hit = driver.execute_script("const e=document.elementFromPoint(arguments[0],arguments[1]);return e ? [e.tagName,e.id,e.className].map(x=>String(x).slice(0,100)).join(' ') : 'no element'", int(point[1]), int(point[2]))
+                    operation["name"] += "; click receiver=" + safe_text(hit)
+                raise
 
         def accept_consent():
             wanted = ["Nur notwendige", "Nur technisch notwendige", "Nur technisch notwendige Cookies", "Ablehnen"] if CONSENT == "necessary" else ["Alle akzeptieren", "Alle Cookies akzeptieren"]
@@ -226,9 +241,9 @@ def run():
 
         def shipping():
             open_page("/account/login")
-            click("#differentShippingAddress")
+            click('label[for="differentShippingAddress"]')
             visible("#shippingAddresspersonalFirstName")
-            click("#differentShippingAddress")
+            click('label[for="differentShippingAddress"]')
             wait.until(EC.invisibility_of_element_located((By.ID, "shippingAddresspersonalFirstName")))
         check("Different shipping address", shipping)
 
