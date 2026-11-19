@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
-from check_shop import BASE, TARGET, create_driver, safe_text
+from check_shop import BASE, TARGET, CONSENT, create_driver, safe_text
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -83,29 +83,36 @@ def run():
     driver = None
     stage = 'browser startup'
     try:
+        report('INFO: Starting browser environment.')
         driver = create_driver()
+        report('INFO: Browser environment connected.')
         wait = WebDriverWait(driver, 30, ignored_exceptions=(StaleElementReferenceException,))
         driver.set_page_load_timeout(60)
         stage = 'login page'
         driver.get(BASE + '/account/login')
         wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
-        body = driver.find_element(By.TAG_NAME, 'body').text.lower()
+        # Atomic page read avoids a stale body handle during storefront hydration.
+        body = wait.until(lambda d: d.execute_script('return document.body ? document.body.innerText : null')).lower()
         if '403 forbidden' in str(driver.title).lower():
             report('BLOCKED: Shop returned 403 Forbidden to this test browser; no credential submission.')
             return 2
         if any(s in body for s in ('verify you are human', 'checking your browser', 'access denied', 'just a moment')):
             report('BLOCKED: Site security challenge; no credential submission.')
             return 2
-        for button in driver.find_elements(By.CSS_SELECTOR, 'button'):
-            if button.is_displayed() and button.text.strip() in ('Nur notwendige', 'Nur technisch notwendige', 'Nur technisch notwendige Cookies', 'Ablehnen'):
+        wanted = ['Alle akzeptieren', 'Alle Cookies akzeptieren'] if CONSENT == 'all' else ['Nur notwendige', 'Nur technisch notwendige', 'Nur technisch notwendige Cookies', 'Ablehnen']
+        def consent_ready(d):
+            button = d.execute_script("return Array.from(document.querySelectorAll('button, a.btn')).find(e=>e.getClientRects().length && arguments[0].includes(e.innerText.trim())) || null", wanted)
+            if button is not None:
                 button.click()
-                break
+            return True
+        wait.until(consent_ready)
         destination = urlsplit(driver.current_url)
         if destination.scheme != 'https' or destination.hostname not in ('www.badart-shop.de', 'badart-shop.de'):
             report('BLOCKED: Credential entry requires the authorized HTTPS shop origin.')
             return 2
         stage = 'login controls'
         mail, secret = login_controls(driver)
+        report('INFO: Login controls available before credential entry.')
         destination = urlsplit(driver.current_url)
         if destination.scheme != 'https' or destination.hostname not in ('www.badart-shop.de', 'badart-shop.de'):
             report('BLOCKED: Credential entry requires the authorized HTTPS shop origin.')
@@ -119,8 +126,11 @@ def run():
             return 2
         stage = 'login result'
         submit = driver.find_element(By.CSS_SELECTOR, '#loginPassword').find_element(By.XPATH, 'ancestor::form').find_element(By.CSS_SELECTOR, 'button[type="submit"]')
-        if TARGET.startswith('android-'):
-            driver.execute_script("arguments[0].scrollIntoView({block:'end',behavior:'instant'});window.scrollBy(0,80)", submit)
+        if TARGET in ('iphone', 'ipad', 'android-phone', 'android-tablet'):
+            if TARGET.startswith('android-'):
+                driver.execute_script("arguments[0].scrollIntoView({block:'end',behavior:'instant'});window.scrollBy(0,80)", submit)
+            else:
+                driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", submit)
             stable = {'rect': None, 'since': time.monotonic()}
             def settled(d):
                 rect = d.execute_script('const r=arguments[0].getBoundingClientRect();return [Math.round(r.x),Math.round(r.y)]', submit)

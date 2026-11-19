@@ -98,6 +98,14 @@ Python-Pakete und Appium/Treiber sind versionsgebunden, Actions auf Commit-SHAs.
 Runner-Browser und Apple-Simulatoren werden vom Anbieter aktualisiert. Entfernte
 Images oder fehlgeschlagene Laufzeiten muessen gezielt repariert und nachgeprueft werden.
 
+Appium-Anfragen sind ausdruecklich auf 240 Sekunden je Anfrage begrenzt. Der gesamte
+Job hat ein Limit von 25 Minuten; der Simulatorstart hat eigene Zeitgrenzen.
+Ein 403-Zugriffsverbot wird ohne erneute Anmeldung als BLOCKED behandelt.
+Zur Diagnose fehlender Anmeldefelder werden nur Seitentitel und Feldbezeichnungen
+vor der ersten Zugangsdaten-Eingabe erfasst, niemals Feldwerte. Konto-URL oder eine
+leere Seite allein reichen nicht als Anmeldenachweis. Nach dem Absenden werden nur
+Status und Kontoseite gelesen; der Login wird nicht automatisch erneut abgesendet.
+
 Lokal: `python -m pip install -r requirements.txt`, danach
 `python -m unittest -v test_mechanism test_login`. Diese Selbsttests pruefen den
 Mechanismus, nicht den Shop. Grundpruefung: `python check_shop.py`.
