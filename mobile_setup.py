@@ -152,6 +152,9 @@ def main():
         appium_args = ["appium", "--address", "127.0.0.1", "--port", "4723", "--log-level", "error",
                        "--allow-insecure", "uiautomator2:chromedriver_autodownload"]
     Path("mobile-capabilities.json").write_text(json.dumps(caps), encoding="utf-8")
+    if target in ("iphone", "ipad") and os.environ.get("IOS_BACKEND") == "native":
+        print("Native iOS Safari simulator ready:", caps["appium:deviceName"], caps["appium:platformVersion"], flush=True)
+        return
     with open("appium.log", "w") as log:
         appium = subprocess.Popen(appium_args, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     wait_for_server(appium)

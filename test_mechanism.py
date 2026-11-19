@@ -32,6 +32,23 @@ class MechanismTests(unittest.TestCase):
             self.assertEqual(driver.locator_converter.convert(By.XPATH, './/option'),
                              ('xpath', './/option'))
 
+    def test_native_ios_requires_ios_and_exact_simulator(self):
+        caps = {"appium:udid": "simulator-test", "appium:deviceName": "iPad test", "appium:platformVersion": "18.6"}
+        with patch('check_shop.TARGET', 'ipad'), patch.dict('os.environ', {'IOS_BACKEND': 'native'}), \
+                patch('check_shop.platform.system', return_value='Darwin'), \
+                patch('pathlib.Path.read_text', return_value=json.dumps(caps)), \
+                patch('check_shop.webdriver.Safari') as safari:
+            safari.return_value.capabilities = {'platformName': 'iOS'}
+            create_driver()
+            selected = safari.call_args.kwargs['options'].to_capabilities()
+            self.assertEqual(selected['safari:deviceUDID'], 'simulator-test')
+            self.assertTrue(selected['safari:useSimulator'])
+            self.assertEqual(selected['platformName'], 'iOS')
+            safari.return_value.capabilities = {'platformName': 'mac'}
+            with self.assertRaisesRegex(RuntimeError, 'iOS session'):
+                create_driver()
+            safari.return_value.quit.assert_called_once()
+
     def test_no_results_cannot_pass(self):
         self.assertEqual(outcome([]), 2)
 

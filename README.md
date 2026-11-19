@@ -129,3 +129,13 @@ Quellen: https://docs.github.com/en/actions/reference/runners/github-hosted-runn
 https://www.selenium.dev/documentation/webdriver/
 https://appium.github.io/appium-xcuitest-driver/latest/overview/
 https://appium.github.io/appium-uiautomator2-driver/latest/
+
+## Alternative iOS-Steuerung
+
+Im geschuetzten Anmeldetest waehlt `ios_backend=native` Apples eigenen Safari-WebDriver
+fuer den ausgewaehlten iPhone-/iPad-Simulator. Dieser Weg benoetigt keinen Appium-/WDA-Build.
+Die Sitzung muss tatsaechlich iOS melden; ein Mac-Fallback wird abgewiesen.
+Der native Weg ist erst nach einem bestaetigten Lauf freigegeben. Bei fehlender
+Remote-Automation oder fehlgeschlagenen Eingaben bleibt das Ergebnis BLOCKED.
+Es werden keine Eingabewerte per JavaScript eingesetzt.
+Quelle: https://webkit.org/blog/9395/webdriver-is-coming-to-safari-in-ios-13/

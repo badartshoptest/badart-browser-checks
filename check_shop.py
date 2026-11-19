@@ -63,6 +63,22 @@ def create_driver():
         require(platform.system() == "Darwin", "Safari requires macOS")
         return webdriver.Safari()
     if TARGET in ("iphone", "ipad", "android-phone", "android-tablet"):
+        if TARGET in ("iphone", "ipad") and os.environ.get("IOS_BACKEND") == "native":
+            require(platform.system() == "Darwin", "Native iOS Safari requires macOS")
+            caps = json.loads(Path("mobile-capabilities.json").read_text())
+            options = webdriver.SafariOptions()
+            for key, value in {
+                "platformName": "iOS", "safari:useSimulator": True,
+                "safari:deviceUDID": caps["appium:udid"],
+                "safari:deviceName": caps["appium:deviceName"],
+                "safari:platformVersion": caps["appium:platformVersion"],
+            }.items():
+                options.set_capability(key, value)
+            driver = webdriver.Safari(options=options)
+            if str(driver.capabilities.get("platformName", "")).lower() != "ios":
+                driver.quit()
+                raise RuntimeError("Native driver did not return an iOS session")
+            return driver
         from appium import webdriver as mobile_webdriver
         from appium.options.common import AppiumOptions
         from appium.webdriver.client_config import AppiumClientConfig
