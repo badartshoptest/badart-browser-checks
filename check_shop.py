@@ -136,7 +136,11 @@ def run():
 
         def click(selector):
             element = visible(selector)
-            if not TARGET.startswith("android-"):
+            if TARGET.startswith("android-"):
+                # Appium's web click does not scroll off-screen controls itself.
+                # Keep the target below scroll-linked mobile headers.
+                driver.execute_script("arguments[0].scrollIntoView({block:'end',behavior:'instant'});window.scrollBy(0,80)", element)
+            else:
                 driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", element)
             # The browser driver handles hit testing in its own viewport coordinates.
             # A second JS hit test used layout coordinates and blocked valid iOS taps.
