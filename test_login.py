@@ -10,6 +10,8 @@ class LoginPrivacyTests(unittest.TestCase):
     def test_pre_entry_reload_never_types_or_submits(self):
         driver = Mock()
         driver.current_url = 'https://www.badart-shop.de/account/login'
+        driver.execute_script.return_value = []
+        driver.find_element.return_value.text = ''
         mail, secret = Mock(), Mock()
         waiter = Mock()
         waiter.until.side_effect = [TimeoutException(), True, mail, secret]
@@ -24,6 +26,8 @@ class LoginPrivacyTests(unittest.TestCase):
     def test_pre_entry_reload_is_bounded(self):
         driver = Mock()
         driver.current_url = 'https://www.badart-shop.de/account/login'
+        driver.execute_script.return_value = []
+        driver.find_element.return_value.text = ''
         waiter = Mock()
         waiter.until.side_effect = [TimeoutException(), True, TimeoutException()]
         with patch('check_login.WebDriverWait', return_value=waiter), patch('check_login.report'):

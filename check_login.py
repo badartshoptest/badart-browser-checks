@@ -53,6 +53,14 @@ def login_controls(driver):
             path = destination.path
             report('Pre-entry route:', path if path in ('/account/login', '/account/logout') else 'other route')
             report('Pre-entry login controls present:', bool(driver.find_elements(By.CSS_SELECTOR, '#loginMail')))
+            # Only public structural metadata, before any credential has been entered.
+            report('Pre-entry page title:', safe_text(driver.title))
+            inputs = driver.execute_script("return Array.from(document.querySelectorAll('input')).slice(0,35).map(e=>[e.id,e.name,e.type].join(':'))")
+            report('Pre-entry input identities:', safe_text(', '.join(inputs)))
+            body = driver.find_element(By.TAG_NAME, 'body').text.lower()
+            if any(s in body for s in ('verify you are human', 'checking your browser', 'access denied', 'just a moment')):
+                report('BLOCKED: Site security challenge; no credential submission or further retry.')
+                raise RuntimeError('Site security challenge')
             if attempt or destination.path != '/account/login':
                 raise
             report('RETRY: Login controls unavailable on initial visit; one read-only reload before credential entry.')
