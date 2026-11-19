@@ -73,7 +73,16 @@ jobs:
         run: npm install --global appium@3.9.0
       - name: Apple-Treiber installieren
         if: matrix.target == 'iphone' || matrix.target == 'ipad'
-        run: appium driver install xcuitest@12.22.8
+        run: |
+          python - <<'PY'
+          import subprocess
+          from mobile_setup import choose_xcuitest_version
+          xcode = subprocess.check_output(['xcodebuild', '-version'], text=True)
+          driver = choose_xcuitest_version(xcode)
+          print(xcode.strip(), flush=True)
+          print('Selected XCUITest driver:', driver, flush=True)
+          subprocess.run(['appium', 'driver', 'install', 'xcuitest@' + driver], check=True)
+          PY
       - name: Android-Treiber installieren
         if: startsWith(matrix.target, 'android-')
         run: |
