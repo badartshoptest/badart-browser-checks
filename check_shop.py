@@ -137,8 +137,8 @@ def run():
         def click(selector):
             element = visible(selector)
             driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", element)
-            # Let scroll-linked headers settle; never force a click through an overlay.
-            wait.until(lambda d: d.execute_script("const e=arguments[0],r=e.getBoundingClientRect(); const p=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return p && (p===e || e.contains(p));", element))
+            # The browser driver handles hit testing in its own viewport coordinates.
+            # A second JS hit test used layout coordinates and blocked valid iOS taps.
             element.click()
 
         def accept_consent():
@@ -226,9 +226,9 @@ def run():
 
         def shipping():
             open_page("/account/login")
-            click('label[for="differentShippingAddress"]')
+            click("#differentShippingAddress")
             visible("#shippingAddresspersonalFirstName")
-            click('label[for="differentShippingAddress"]')
+            click("#differentShippingAddress")
             wait.until(EC.invisibility_of_element_located((By.ID, "shippingAddresspersonalFirstName")))
         check("Different shipping address", shipping)
 
