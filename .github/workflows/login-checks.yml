@@ -14,6 +14,12 @@ on:
         options: [macos-15-intel, macos-15, macos-26]
         default: macos-15-intel
         required: true
+      ios_backend:
+        description: Apple-Simulator-Steuerung (native ohne Appium/WDA)
+        type: choice
+        options: [appium, native]
+        default: appium
+        required: true
       consent:
         description: Cookie-Auswahl im frischen Testbrowser
         type: choice
@@ -39,6 +45,7 @@ jobs:
     env:
       TARGET: ${{ matrix.target }}
       CONSENT: ${{ inputs.consent || 'necessary' }}
+      IOS_BACKEND: ${{ inputs.ios_backend || 'appium' }}
       PYTHONUTF8: '1'
     defaults:
       run:
@@ -57,19 +64,19 @@ jobs:
       - name: Bericht und Simulatorauswahl selbst pruefen
         run: python -m unittest -v test_mechanism test_login
       - name: Safari aktivieren
-        if: matrix.target == 'safari'
+        if: matrix.target == 'safari' || ((matrix.target == 'iphone' || matrix.target == 'ipad') && inputs.ios_backend == 'native')
         run: sudo /usr/bin/safaridriver --enable
       - name: Node fuer Appium
-        if: matrix.mobile
+        if: matrix.mobile && (startsWith(matrix.target, 'android-') || inputs.ios_backend != 'native')
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: '24'
           package-manager-cache: false
       - name: Appium installieren
-        if: matrix.mobile
+        if: matrix.mobile && (startsWith(matrix.target, 'android-') || inputs.ios_backend != 'native')
         run: npm install --global appium@3.9.0
       - name: Apple-Treiber installieren
-        if: matrix.target == 'iphone' || matrix.target == 'ipad'
+        if: (matrix.target == 'iphone' || matrix.target == 'ipad') && inputs.ios_backend != 'native'
         run: |
           python - <<'PY'
           import subprocess
@@ -81,7 +88,7 @@ jobs:
           subprocess.run(['appium', 'driver', 'install', 'xcuitest@' + driver], check=True)
           PY
       - name: Apple-Testagent separat bauen
-        if: matrix.target == 'iphone' || matrix.target == 'ipad'
+        if: (matrix.target == 'iphone' || matrix.target == 'ipad') && inputs.ios_backend != 'native'
         timeout-minutes: 8
         run: appium driver run xcuitest build-wda
       - name: Android-Treiber installieren
