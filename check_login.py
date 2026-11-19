@@ -23,7 +23,9 @@ def login_state(driver):
     origin = urlsplit(driver.current_url).hostname
     if origin not in ('www.badart-shop.de', 'badart-shop.de'):
         return 'unexpected_origin'
-    if path in ('/account', '/account/', '/checkout/confirm') and not driver.find_elements(By.CSS_SELECTOR, '#loginMail'):
+    # A protected URL alone can also render an error or an unfinished page.
+    overview = 'hier haben sie direkten zugriff auf ihre profilinformationen' in text
+    if path in ('/account', '/account/') and overview and not driver.find_elements(By.CSS_SELECTOR, '#loginMail'):
         return 'authenticated'
     if driver.find_elements(By.CSS_SELECTOR, 'a[href*="/account/logout"]'):
         return 'authenticated'
@@ -57,6 +59,9 @@ def login_controls(driver):
             report('Pre-entry page title:', safe_text(driver.title))
             inputs = driver.execute_script("return Array.from(document.querySelectorAll('input')).slice(0,35).map(e=>[e.id,e.name,e.type].join(':'))")
             report('Pre-entry input identities:', safe_text(', '.join(inputs)))
+            if '403 forbidden' in str(driver.title).lower():
+                report('BLOCKED: Shop returned 403 Forbidden to this test browser; no credentials submitted and no further retry.')
+                raise RuntimeError('Shop access denied')
             body = driver.find_element(By.TAG_NAME, 'body').text.lower()
             if any(s in body for s in ('verify you are human', 'checking your browser', 'access denied', 'just a moment')):
                 report('BLOCKED: Site security challenge; no credential submission or further retry.')
@@ -85,6 +90,9 @@ def run():
         driver.get(BASE + '/account/login')
         wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
         body = driver.find_element(By.TAG_NAME, 'body').text.lower()
+        if '403 forbidden' in str(driver.title).lower():
+            report('BLOCKED: Shop returned 403 Forbidden to this test browser; no credential submission.')
+            return 2
         if any(s in body for s in ('verify you are human', 'checking your browser', 'access denied', 'just a moment')):
             report('BLOCKED: Site security challenge; no credential submission.')
             return 2
@@ -128,6 +136,7 @@ def run():
             return 1 if state == 'rejected' else 2
         report('PASS: Dedicated test account authenticated; protected account page or logout control confirmed.')
         report('Environment:', safe_text(TARGET), safe_text(driver.capabilities.get('browserVersion', 'not reported')), safe_text(platform.platform()))
+        report('Browser platform:', safe_text(driver.capabilities.get('platformName', 'not reported')), safe_text(driver.capabilities.get('platformVersion', 'not reported')))
         return 0
     except Exception as exc:
         report('BLOCKED: Login acceptance incomplete; stage:', stage, '; diagnostic class:', type(exc).__name__)

@@ -7,6 +7,18 @@ from selenium.common.exceptions import TimeoutException
 
 
 class LoginPrivacyTests(unittest.TestCase):
+    def test_explicit_access_denial_stops_before_reload_or_credentials(self):
+        driver = Mock()
+        driver.current_url = 'https://www.badart-shop.de/account/login'
+        driver.title = '403 Forbidden'
+        driver.execute_script.return_value = []
+        waiter = Mock()
+        waiter.until.side_effect = TimeoutException()
+        with patch('check_login.WebDriverWait', return_value=waiter), patch('check_login.report'):
+            with self.assertRaises(RuntimeError):
+                check_login.login_controls(driver)
+        driver.get.assert_not_called()
+
     def test_pre_entry_reload_never_types_or_submits(self):
         driver = Mock()
         driver.current_url = 'https://www.badart-shop.de/account/login'
@@ -46,7 +58,13 @@ class LoginPrivacyTests(unittest.TestCase):
         self.assertFalse(check_login.login_state(self.page('https://www.badart-shop.de/account/login', login=True)))
 
     def test_protected_page_is_positive_without_lazy_logout_menu(self):
-        self.assertEqual(check_login.login_state(self.page('https://www.badart-shop.de/account')), 'authenticated')
+        self.assertEqual(check_login.login_state(self.page('https://www.badart-shop.de/account', 'Hier haben Sie direkten Zugriff auf Ihre Profilinformationen.')), 'authenticated')
+
+    def test_error_at_protected_url_is_not_authentication(self):
+        self.assertFalse(check_login.login_state(self.page('https://www.badart-shop.de/account', '403 Forbidden')))
+
+    def test_unfinished_protected_page_is_not_authentication(self):
+        self.assertFalse(check_login.login_state(self.page('https://www.badart-shop.de/account')))
 
     def test_external_origin_cannot_be_accepted(self):
         self.assertEqual(check_login.login_state(self.page('https://other.invalid/account', logout=True)), 'unexpected_origin')
