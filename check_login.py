@@ -5,9 +5,11 @@ Never output account page text, screenshots, credentials or exception messages.
 """
 import os
 import platform
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from check_shop import BASE, TARGET, create_driver, safe_text
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -34,6 +36,29 @@ def report(*parts):
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as stream:
             stream.write(message + '\n\n')
+
+
+def login_controls(driver):
+    """At most one read-only page reload, always before any credential entry."""
+    wait = WebDriverWait(driver, 30, ignored_exceptions=(StaleElementReferenceException,))
+    for attempt in range(2):
+        destination = urlsplit(driver.current_url)
+        if destination.scheme != 'https' or destination.hostname not in ('www.badart-shop.de', 'badart-shop.de'):
+            raise RuntimeError('Unexpected credential destination')
+        try:
+            mail = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '#loginMail')))
+            secret = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '#loginPassword')))
+            return mail, secret
+        except TimeoutException:
+            path = destination.path
+            report('Pre-entry route:', path if path in ('/account/login', '/account/logout') else 'other route')
+            report('Pre-entry login controls present:', bool(driver.find_elements(By.CSS_SELECTOR, '#loginMail')))
+            if attempt or destination.path != '/account/login':
+                raise
+            report('RETRY: Login controls unavailable on initial visit; one read-only reload before credential entry.')
+            driver.get(BASE + '/account/login')
+            wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
+    raise RuntimeError('Login controls unavailable')
 
 
 def run():
@@ -64,15 +89,30 @@ def run():
             report('BLOCKED: Credential entry requires the authorized HTTPS shop origin.')
             return 2
         stage = 'login controls'
-        mail = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '#loginMail')))
-        secret = driver.find_element(By.CSS_SELECTOR, '#loginPassword')
+        mail, secret = login_controls(driver)
+        destination = urlsplit(driver.current_url)
+        if destination.scheme != 'https' or destination.hostname not in ('www.badart-shop.de', 'badart-shop.de'):
+            report('BLOCKED: Credential entry requires the authorized HTTPS shop origin.')
+            return 2
+        mail.clear()
+        secret.clear()
         mail.send_keys(email)
         secret.send_keys(password)
         if not driver.execute_script('return arguments[0].validity.valid', mail):
             report('BLOCKED: Stored test email does not pass browser email validation; no login submitted.')
             return 2
         stage = 'login result'
-        driver.find_element(By.CSS_SELECTOR, '#loginPassword').find_element(By.XPATH, 'ancestor::form').find_element(By.CSS_SELECTOR, 'button[type="submit"]').click()
+        submit = driver.find_element(By.CSS_SELECTOR, '#loginPassword').find_element(By.XPATH, 'ancestor::form').find_element(By.CSS_SELECTOR, 'button[type="submit"]')
+        if TARGET.startswith('android-'):
+            driver.execute_script("arguments[0].scrollIntoView({block:'end',behavior:'instant'});window.scrollBy(0,80)", submit)
+            stable = {'rect': None, 'since': time.monotonic()}
+            def settled(d):
+                rect = d.execute_script('const r=arguments[0].getBoundingClientRect();return [Math.round(r.x),Math.round(r.y)]', submit)
+                if rect != stable['rect']:
+                    stable.update(rect=rect, since=time.monotonic())
+                return time.monotonic() - stable['since'] >= 0.6
+            wait.until(settled)
+        submit.click()
         # Positive authenticated evidence, without copying any customer content.
         state = wait.until(login_state)
         if state != 'authenticated':

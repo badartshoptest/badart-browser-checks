@@ -3,9 +3,34 @@ import io
 import unittest
 from unittest.mock import patch, Mock
 import check_login
+from selenium.common.exceptions import TimeoutException
 
 
 class LoginPrivacyTests(unittest.TestCase):
+    def test_pre_entry_reload_never_types_or_submits(self):
+        driver = Mock()
+        driver.current_url = 'https://www.badart-shop.de/account/login'
+        mail, secret = Mock(), Mock()
+        waiter = Mock()
+        waiter.until.side_effect = [TimeoutException(), True, mail, secret]
+        with patch('check_login.WebDriverWait', return_value=waiter), patch('check_login.report'):
+            self.assertEqual(check_login.login_controls(driver), (mail, secret))
+        driver.get.assert_called_once_with(check_login.BASE + '/account/login')
+        mail.send_keys.assert_not_called()
+        secret.send_keys.assert_not_called()
+        mail.click.assert_not_called()
+        secret.click.assert_not_called()
+
+    def test_pre_entry_reload_is_bounded(self):
+        driver = Mock()
+        driver.current_url = 'https://www.badart-shop.de/account/login'
+        waiter = Mock()
+        waiter.until.side_effect = [TimeoutException(), True, TimeoutException()]
+        with patch('check_login.WebDriverWait', return_value=waiter), patch('check_login.report'):
+            with self.assertRaises(TimeoutException):
+                check_login.login_controls(driver)
+        driver.get.assert_called_once_with(check_login.BASE + '/account/login')
+
     def page(self, path, text='', login=False, logout=False):
         driver = Mock()
         driver.current_url = path
