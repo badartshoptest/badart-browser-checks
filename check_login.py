@@ -10,6 +10,22 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from check_shop import BASE, TARGET, create_driver, safe_text
 from pathlib import Path
+from urllib.parse import urlsplit
+
+
+def login_state(driver):
+    text = driver.find_element(By.TAG_NAME, 'body').text.lower()
+    if 'kein account mit den angegebenen zugangsdaten' in text:
+        return 'rejected'
+    path = urlsplit(driver.current_url).path
+    origin = urlsplit(driver.current_url).hostname
+    if origin not in ('www.badart-shop.de', 'badart-shop.de'):
+        return 'unexpected_origin'
+    if path in ('/account', '/account/', '/checkout/confirm') and not driver.find_elements(By.CSS_SELECTOR, '#loginMail'):
+        return 'authenticated'
+    if driver.find_elements(By.CSS_SELECTOR, 'a[href*="/account/logout"]'):
+        return 'authenticated'
+    return False
 
 
 def report(*parts):
@@ -27,10 +43,12 @@ def run():
         report('BLOCKED: Dedicated test-account secrets are not configured.')
         return 2
     driver = None
+    stage = 'browser startup'
     try:
         driver = create_driver()
         wait = WebDriverWait(driver, 30)
         driver.set_page_load_timeout(60)
+        stage = 'login page'
         driver.get(BASE + '/account/login')
         wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
         body = driver.find_element(By.TAG_NAME, 'body').text.lower()
@@ -41,18 +59,37 @@ def run():
             if button.is_displayed() and button.text.strip() in ('Nur notwendige', 'Nur technisch notwendige', 'Nur technisch notwendige Cookies', 'Ablehnen'):
                 button.click()
                 break
+        destination = urlsplit(driver.current_url)
+        if destination.scheme != 'https' or destination.hostname not in ('www.badart-shop.de', 'badart-shop.de'):
+            report('BLOCKED: Credential entry requires the authorized HTTPS shop origin.')
+            return 2
+        stage = 'login controls'
         mail = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '#loginMail')))
         secret = driver.find_element(By.CSS_SELECTOR, '#loginPassword')
         mail.send_keys(email)
         secret.send_keys(password)
+        if not driver.execute_script('return arguments[0].validity.valid', mail):
+            report('BLOCKED: Stored test email does not pass browser email validation; no login submitted.')
+            return 2
+        stage = 'login result'
         driver.find_element(By.CSS_SELECTOR, '#loginPassword').find_element(By.XPATH, 'ancestor::form').find_element(By.CSS_SELECTOR, 'button[type="submit"]').click()
         # Positive authenticated evidence, without copying any customer content.
-        wait.until(lambda d: bool(d.find_elements(By.CSS_SELECTOR, 'a[href$="/account/logout"]')))
-        report('PASS: Dedicated test account authenticated; logout control exists.')
+        state = wait.until(login_state)
+        if state != 'authenticated':
+            report('FAIL: Shop rejected the supplied test-account credentials.' if state == 'rejected' else 'BLOCKED: Unexpected login navigation origin.')
+            return 1 if state == 'rejected' else 2
+        report('PASS: Dedicated test account authenticated; protected account page or logout control confirmed.')
         report('Environment:', safe_text(TARGET), safe_text(driver.capabilities.get('browserVersion', 'not reported')), safe_text(platform.platform()))
         return 0
     except Exception as exc:
-        report('BLOCKED: Login acceptance incomplete; diagnostic class:', type(exc).__name__)
+        report('BLOCKED: Login acceptance incomplete; stage:', stage, '; diagnostic class:', type(exc).__name__)
+        if driver is not None and stage == 'login result':
+            try:
+                path = urlsplit(driver.current_url).path
+                report('Result page:', path if path in ('/account/login', '/account', '/account/', '/checkout/confirm') else 'other route')
+                report('Login controls still present:', bool(driver.find_elements(By.CSS_SELECTOR, '#loginMail')))
+            except Exception:
+                pass
         return 2
     finally:
         if driver is not None:
