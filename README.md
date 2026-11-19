@@ -1,82 +1,108 @@
 # BADART Browser- und Geraetepruefung
 
-Eigenes Testprojekt von **badartshoptest**. Es enthaelt ausschliesslich Testcode fuer
-die oeffentliche Storefront, keine Shop-Quelldateien und keine Kundendaten.
+Eigenes Testprojekt von **badartshoptest** fuer die BADART-Storefront.
+Es enthaelt Testcode, keine Shop-Quelldateien und keine Kundendaten.
 
-## Start und Ergebnis
+## Start und Ergebnisse
 
-Unter **Actions → BADART Browser- und Geraetepruefung → Run workflow** starten.
-`necessary` waehlt notwendige Cookies, `all` alle Cookies, soweit die Schaltflaeche
-in der frischen Sitzung vorhanden ist. Ein gesonderter Fall zeigt, ob die Auswahl
-tatsaechlich ausgefuehrt werden konnte. Es besteht kein Zeitplan und keine Ueberwachung
-im Hintergrund. Dasselbe Browser-/Systemziel laeuft hoechstens einmal gleichzeitig. Unabhaengige Ziele koennen parallel laufen; gezielte Wiederholungen muessen daher nicht auf einen anderen Simulator warten.
+Unter **Actions** gibt es zwei getrennte Pruefungen:
 
-Die Auswahl `all` prueft acht Ziele, hoechstens vier gleichzeitig. `desktop`, `mobile`, `apple`, `android` und einzelne Browser/Geraete ermoeglichen gezielte Wiederholungen. Der Ergebnisbericht steht
-direkt in der Zusammenfassung des jeweiligen Actions-Jobs. Er nennt Browser, Version,
-Betriebssystem, Simulator/Emulator und jeden Testfall.
+| Workflow | Umfang | Start |
+|---|---|---|
+| BADART Browser- und Geraetepruefung | 13 Grundpruefungen ohne Kundenanmeldung | Manuell oder bei Aenderungen an den Grundtest-Dateien |
+| BADART Geschuetzter Anmeldetest | Anmeldung mit dem eigenen Shop-Testkundenkonto; positive Konto-/Logout-Bestaetigung | Ausschliesslich manuell auf main |
+
+Workflow auswaehlen, **Run workflow**, Branch **main**, Ziel und Apple-Image
+auswaehlen, danach starten. `all` prueft acht Ziele, hoechstens vier gleichzeitig.
+`desktop`, `mobile`, `apple`, `android` oder ein einzelnes Ziel erlauben gezielte
+Wiederholungen. Dasselbe Ziel mit demselben Systemimage laeuft nur einmal gleichzeitig.
+Es gibt keinen Zeitplan und keine Hintergrundueberwachung.
+
+Ergebnisse stehen in der Zusammenfassung jedes Jobs. **PASS** bestaetigt die
+tatsaechlich erfuellte Erwartung, **FAIL** eine verletzte Erwartung. **BLOCKED**
+bedeutet, dass beispielsweise Browserstart oder Elementzugriff eine belastbare
+Aussage verhindert haben. Fehlende oder blockierte Tests gelten nie als bestanden.
+Ein erfolgreicher Anmeldetest allein gibt keine Registrierung oder Bestellung frei.
+
+## Browser und Geraete
 
 | Ziel | Ausfuehrung | Grenze |
 |---|---|---|
-| Chrome, Edge, Firefox | Originalbrowser auf Windows-2025-Runner | Windows Server, kein Nachweis fuer alle Windows-PCs |
+| Chrome, Edge, Firefox | Originalbrowser auf Windows-2025-Runner | Windows Server; kein Nachweis fuer alle Windows-PCs |
 | Safari | Originalbrowser auf gewaehltem macOS-Standardimage | Die dort installierte Version |
 | iPhone und iPad | Safari im Apple-Simulator | Neuester zum aktiven Xcode-SDK passender installierter iOS-Runtime; kein physisches Geraet |
-| Android-Handy | Chrome im Android-15-Emulator | Pixel-7-Profil, keine OEM-Vollabdeckung |
-| Android-Tablet | Derselbe Emulator mit Tablet-Aufloesung und -Dichte | Generisches Tablet-Profil, kein bestimmtes physisches Tablet |
+| Android-Handy | Chrome im Android-15-Emulator | Pixel-7-Profil; keine OEM-Vollabdeckung |
+| Android-Tablet | Android-Emulator mit Tablet-Aufloesung und -Dichte | Generisches Tablet-Profil |
 
-**PASS** bedeutet: die konkrete Assertion wurde ausgefuehrt und erfuellt.
-**FAIL** bedeutet: eine konkrete Erwartung ist verletzt.
-**BLOCKED** bedeutet: beispielsweise Browserstart, Elementzugriff oder Infrastruktur
-verhinderten eine belastbare Aussage. Fehlende Berichte, leere Testlisten und blockierte
-Tests gelten niemals als bestanden. Auch ein gruener Grundprueflauf ist keine
-vollstaendige Freigabe fuer Registrierung, Anmeldung und Bestellung.
+Verfuegbare Apple-Standardimages: `macos-15-intel`, `macos-15`, `macos-26`.
+Berichte nennen die tatsaechlich verwendete Umgebung. Simulatorstarts koennen
+scheitern; ein solcher Lauf ist keine Aussage ueber einen Shopfehler. Historische
+Safari-Versionen und echte iPhones/iPads werden durch diese Auswahl nicht ersetzt.
 
-## Testumfang
+## Zugangsdaten des Anmeldetests
 
-- Cookieauswahl im frischen Browser (soweit sichtbar).
-- Sichtbare Pflichtfelder fuer Anmeldung und Registrierung.
-- Browservalidierung leerer und ungueltiger E-Mail-Eingaben, ohne Absenden.
-- Privat/Firma-Umschaltung und abweichende Lieferadresse.
-- Auswahl Deutschland, Oesterreich, Schweiz; deutsche Bundesland-Dubletten.
-- Passwort-Wiederherstellungsseite und Ruecknavigation, ohne Mailversand.
-- Startseite, leerer Warenkorb, Kontaktseite, Wohnen-Listing und Produktdetail.
-- Horizontales Ueberlaufen des Anmeldeformulars bei zwei Desktopbreiten bzw.
-  Hoch-/Querformat im Simulator/Emulator. Dies ersetzt keine manuelle Sichtpruefung.
+Unter **Settings -> Secrets and variables -> Actions** werden ausschliesslich
+die Zugangsdaten des eigenen **Shop-Testkundenkontos** hinterlegt:
+
+| Repository secret | Inhalt |
+|---|---|
+| SHOP_TEST_EMAIL | Im BADART-Shop registrierte E-Mail-Adresse des Testkunden |
+| SHOP_TEST_PASSWORD | Passwort dieses Shop-Kundenkontos |
+
+Die Daten werden vom Nutzer direkt in GitHub eingegeben. Sie sind keine GitHub-
+oder Postfach-Zugangsdaten. Eine Mailbox allein erstellt kein Shop-Kundenkonto.
+Die Secrets werden nur dem Schritt zur Shop-Anmeldung uebergeben. Die Grundpruefung
+liest keine Secrets. Der Login wird nur auf dem freigegebenen HTTPS-Shop ausgefuehrt.
+
+Der Anmeldetest sendet keine Registrierung, Reset-Mail oder Bestellung ab und
+aendert weder Warenkorb noch Adressen. Er prueft zunaechst die Browservalidierung
+der E-Mail-Adresse und verlangt nach dem Absenden einen positiven Anmeldenachweis.
+Eine ausdrueckliche Ablehnung der Zugangsdaten wird als FAIL gemeldet.
+
+## Umfang der Grundpruefung
+
+- Cookieauswahl im frischen Browser, soweit sichtbar.
+- Pflichtfelder, leere und ungueltige E-Mail-Eingaben ohne Absenden.
+- Privat/Firma, abweichende Lieferadresse, Deutschland/Oesterreich/Schweiz.
+- Deutsche Bundesland-Dubletten.
+- Passwort-Wiederherstellungsseite und Ruecknavigation ohne Mailversand.
+- Startseite, leerer Warenkorb, Kontakt, Wohnen-Listing und Produktdetail.
+- Horizontales Ueberlaufen bei zwei Desktopbreiten beziehungsweise Hoch-/Querformat.
 
 ## Offene Abnahmefaelle
 
-Erfolgreiche Privat-/Firmenregistrierung, Login mit Testkonto, abgebrochene und
-fortgesetzte Registrierung, doppelte E-Mail, abweichende Passwoerter, Servervalidierung,
-Passwort-Reset-Zustellung, bezahlter Artikel im Warenkorb, Versand-/Steuerberechnung,
-Zahlungsabschluss und Rueckwege, Apple Pay, Bank-App-Wechsel, Autofill, echte Geraete
-und historische Browserversionen sind **nicht abgenommen**. Hierfuer fehlen noch
-Testkonto, geeignete Testdaten und ein abgestimmter Testmodus fuer E-Mail/Bestellung/
-Zahlung. Diese Faelle werden nicht durch reine Seitenaufrufe als bestanden markiert.
+Erfolgreiche Privat-/Firmenregistrierung, Abbruch und Fortsetzung einer Registrierung,
+doppelte E-Mail, abweichende Passwoerter, Servervalidierung, Reset-Mail-Zustellung,
+Versand-/Steuerberechnung, Zahlungsabschluss und Rueckwege, Apple Pay, Bank-App-Wechsel,
+Autofill, echte Geraete und historische Browserversionen sind durch diese Workflows
+**nicht vollstaendig abgenommen**. Eine separate manuelle Testbestellung ist kein
+geraeteuebergreifender Bestellnachweis. Weitere Bestellungen oder Zahlungspruefungen
+benoetigen einen konkret abgestimmten Testmodus.
 
 ## Kosten und Schutz
 
-Nur manuell oder durch Testcode-Aenderungen gestartete Standard-GitHub-Runner im freigegebenen oeffentlichen Original-
-Repository. Keine kostenpflichtigen Zusatzdienste, keine Artefakt-Uploads und keine
-Caches. Der Job startet nicht in privaten Repositories oder Forks. Die vorhandenen
-kostenlosen GitHub-Bedingungen und Nutzungsgrenzen gelten; kuenftige Tarifaenderungen
-muessen erneut bewertet werden. Es werden keine Zahlungsdaten hinterlegt.
+Standard-GitHub-Runner im freigegebenen oeffentlichen Originalrepository; keine
+kostenpflichtigen Zusatzdienste, Zahlungsdaten, Artefakt-Uploads oder Caches.
+Die vorhandenen kostenlosen GitHub-Bedingungen und Nutzungsgrenzen gelten.
+Workflows starten nicht in privaten Repositories oder Forks.
 
-Der GitHub-Token ist nur lesend; Checkout speichert keine Zugangsdaten. Keine Secrets
-werden eingelesen. Keine automatischen E-Mails, Registrierungen oder Bestellungen.
-Die oeffentlichen Berichte enthalten feste Testbezeichnungen und technische Versionen,
-keine Screenshots, HTML-Dumps, Formularinhalte oder ungefilterten Fehlermeldungen.
-Appium lauscht nur auf 127.0.0.1 im temporaeren Runner. Nur sein Android-Chromedriver-
-Download ist freigegeben. Der Runner wird nach dem Job verworfen.
+Der GitHub-Token ist nur lesend; Checkout speichert keine Zugangsdaten. Oeffentliche
+Berichte enthalten feste Testbezeichnungen und technische Versionen, keine
+Credentials, Kontoseiten, Screenshots, HTML-Dumps oder ungefilterten Fehlermeldungen.
+Appium lauscht nur auf 127.0.0.1 im temporaeren Runner. Nur der Android-Chromedriver-
+Download ist als Appium-Zusatzfunktion freigegeben. Runner werden nach dem Job verworfen.
 
 ## Technische Pflege
 
-Python-Pakete und Appium/Treiber sind versionsgebunden, GitHub-Actions auf Commit-SHAs.
-Runner-Browser und installierte Apple-Simulatoren werden von GitHub aktualisiert;
-der Bericht nennt daher den wirklich ausgefuehrten Stand. Fehlgeschlagene Laufzeiten
-oder entfernte Images muessen repariert und erneut getestet werden.
+Python-Pakete und Appium/Treiber sind versionsgebunden, Actions auf Commit-SHAs.
+Runner-Browser und Apple-Simulatoren werden vom Anbieter aktualisiert. Entfernte
+Images oder fehlgeschlagene Laufzeiten muessen gezielt repariert und nachgeprueft werden.
 
 Lokal: `python -m pip install -r requirements.txt`, danach
-`python -m unittest -v test_mechanism`. Diese Selbsttests pruefen den Mechanismus,
-nicht den Shop. Echte Browserpruefungen laufen getrennt mit `python check_shop.py`.
+`python -m unittest -v test_mechanism test_login`. Diese Selbsttests pruefen den
+Mechanismus, nicht den Shop. Grundpruefung: `python check_shop.py`.
+Opt-in-Anmeldepruefung mit konfigurierten Umgebungsvariablen: `python check_login.py`.
+Secrets niemals in Kommandozeilen, Dateien oder oeffentliche Berichte schreiben.
 
 Quellen: https://docs.github.com/en/actions/reference/runners/github-hosted-runners
 https://www.selenium.dev/documentation/webdriver/
