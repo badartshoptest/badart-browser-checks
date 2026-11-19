@@ -84,7 +84,7 @@ def run():
     stage = 'browser startup'
     try:
         driver = create_driver()
-        wait = WebDriverWait(driver, 30)
+        wait = WebDriverWait(driver, 30, ignored_exceptions=(StaleElementReferenceException,))
         driver.set_page_load_timeout(60)
         stage = 'login page'
         driver.get(BASE + '/account/login')
