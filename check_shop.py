@@ -136,7 +136,8 @@ def run():
 
         def click(selector):
             element = visible(selector)
-            driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", element)
+            if not TARGET.startswith("android-"):
+                driver.execute_script("arguments[0].scrollIntoView({block:'center',behavior:'instant'})", element)
             # The browser driver handles hit testing in its own viewport coordinates.
             # A second JS hit test used layout coordinates and blocked valid iOS taps.
             stable = {"rect": None, "since": time.monotonic()}
@@ -152,7 +153,7 @@ def run():
                 point = re.search(r"point \((\d+), (\d+)\)", str(exc))
                 if point:
                     # Only structural identifiers, never text, HTML or form values.
-                    hit = driver.execute_script("const e=document.elementFromPoint(arguments[0],arguments[1]);return e ? [e.tagName,e.id,e.className].map(x=>String(x).slice(0,100)).join(' ') : 'no element'", int(point[1]), int(point[2]))
+                    hit = driver.execute_script("let e=document.elementFromPoint(arguments[0],arguments[1]);const a=[];for(let n=0;e&&n<4;n++,e=e.parentElement)a.push([e.tagName,e.id,e.className].map(x=>String(x).slice(0,70)).join(' '));return a.join(' / ')||'no element'", int(point[1]), int(point[2]))
                     operation["name"] += "; click receiver=" + safe_text(hit)
                 raise
 
