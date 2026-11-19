@@ -65,8 +65,11 @@ def create_driver():
     if TARGET in ("iphone", "ipad", "android-phone", "android-tablet"):
         from appium import webdriver as mobile_webdriver
         from appium.options.common import AppiumOptions
+        from appium.webdriver.client_config import AppiumClientConfig
         caps = json.loads(Path("mobile-capabilities.json").read_text())
-        driver = mobile_webdriver.Remote("http://127.0.0.1:4723", options=AppiumOptions().load_capabilities(caps))
+        endpoint = "http://127.0.0.1:4723"
+        driver = mobile_webdriver.Remote(endpoint, options=AppiumOptions().load_capabilities(caps),
+                                         client_config=AppiumClientConfig(remote_server_addr=endpoint, timeout=240))
         # These sessions exclusively automate web pages. Appium's native converter
         # leaves By.ID unchanged, which Chrome's W3C web endpoint rejects.
         driver.locator_converter = LocatorConverter()

@@ -16,6 +16,7 @@ class MechanismTests(unittest.TestCase):
                 patch('pathlib.Path.read_text', return_value=json.dumps({'browserName': 'Chrome'})), \
                 patch('appium.webdriver.Remote') as remote:
             driver = create_driver()
+            self.assertEqual(remote.call_args.kwargs['client_config'].timeout, 240)
             self.assertEqual(driver.locator_converter.convert(By.ID, 'accountType'),
                              ('css selector', '[id="accountType"]'))
             self.assertEqual(driver.locator_converter.convert(By.XPATH, './/option'),

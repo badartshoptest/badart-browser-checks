@@ -34,7 +34,7 @@ def login_state(driver):
 
 def report(*parts):
     message = ' '.join(map(str, parts))
-    print(message)
+    print(message, flush=True)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as stream:
             stream.write(message + '\n\n')
