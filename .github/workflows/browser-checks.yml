@@ -25,9 +25,6 @@ on:
         required: true
 permissions:
   contents: read
-concurrency:
-  group: badart-suite-${{ inputs.target || 'all' }}-${{ inputs.apple_runner || 'macos-15-intel' }}
-  cancel-in-progress: false
 jobs:
   baseline:
     if: github.repository == 'badartshoptest/badart-browser-checks' && github.event.repository.private == false
@@ -100,3 +97,4 @@ jobs:
           pkill -f '[a]ppium' || true
           if [[ "$RUNNER_OS" == 'macOS' ]]; then xcrun simctl shutdown all || true; fi
           if [[ "$RUNNER_OS" == 'Linux' ]]; then "$ANDROID_HOME/platform-tools/adb" emu kill || true; fi
+
