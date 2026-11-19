@@ -3,6 +3,16 @@
 Eigenes Testprojekt von **badartshoptest** fuer die BADART-Storefront.
 Es enthaelt Testcode, keine Shop-Quelldateien und keine Kundendaten.
 
+## Bestaetigter Stand am 19.11.2026
+
+Erfolgreiche Anmeldung: Chrome, Edge, Firefox und Safari 26.6 auf Intel-Mac.
+Android-Anmeldung: BLOCKED durch eine Shopantwort 403 vor jeder Eingabe.
+iPhone/iPad-Anmeldung: noch kein bestaetigter PASS; Simulator-Infrastruktur blockiert.
+[Gesamtergebnis und Nachweise](PRUEFERGEBNIS-2026-11-19.md).
+Der Anmeldetest startet standardmaessig mit `desktop`; mobile Ziele bleiben
+fuer die gezielte technische Nachpruefung waehlbar. Kein vollstaendiger
+Registrierungs- oder Bestellnachweis.
+
 ## Start und Ergebnisse
 
 Unter **Actions** gibt es zwei getrennte Pruefungen:
