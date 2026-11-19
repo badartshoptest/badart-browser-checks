@@ -1,0 +1,100 @@
+name: BADART Geschuetzter Anmeldetest
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Alle Ziele oder gezielte Wiederholungspruefung
+        type: choice
+        options: [all, desktop, mobile, apple, android, chrome, edge, firefox, safari, iphone, ipad, android-phone, android-tablet]
+        default: apple
+        required: true
+      apple_runner:
+        description: Kostenloses Apple-Standardimage (Version steht im Bericht)
+        type: choice
+        options: [macos-15-intel, macos-15, macos-26]
+        default: macos-26
+        required: true
+      consent:
+        description: Cookie-Auswahl im frischen Testbrowser
+        type: choice
+        options: [necessary, all]
+        default: necessary
+        required: true
+permissions:
+  contents: read
+jobs:
+  baseline:
+    if: github.repository == 'badartshoptest/badart-browser-checks' && github.event.repository.private == false && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    name: ${{ matrix.target }}
+    concurrency:
+      group: badart-login-target-${{ matrix.target }}-${{ matrix.os == 'macos-15' && (inputs.apple_runner || 'macos-15-intel') || matrix.os }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: ${{ fromJSON('{"all":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"desktop":[{"target":"chrome","os":"windows-2025","mobile":false},{"target":"edge","os":"windows-2025","mobile":false},{"target":"firefox","os":"windows-2025","mobile":false},{"target":"safari","os":"macos-15","mobile":false}],"mobile":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android-phone":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true}],"android-tablet":[{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}],"chrome":[{"target":"chrome","os":"windows-2025","mobile":false}],"edge":[{"target":"edge","os":"windows-2025","mobile":false}],"firefox":[{"target":"firefox","os":"windows-2025","mobile":false}],"safari":[{"target":"safari","os":"macos-15","mobile":false}],"iphone":[{"target":"iphone","os":"macos-15","mobile":true}],"ipad":[{"target":"ipad","os":"macos-15","mobile":true}],"apple":[{"target":"safari","os":"macos-15","mobile":false},{"target":"iphone","os":"macos-15","mobile":true},{"target":"ipad","os":"macos-15","mobile":true}],"android":[{"target":"android-phone","os":"ubuntu-24.04","mobile":true},{"target":"android-tablet","os":"ubuntu-24.04","mobile":true}]}')[inputs.target || 'all'] }}
+    runs-on: ${{ matrix.os == 'macos-15' && (inputs.apple_runner || 'macos-15-intel') || matrix.os }}
+    timeout-minutes: 25
+    env:
+      TARGET: ${{ matrix.target }}
+      CONSENT: ${{ inputs.consent || 'necessary' }}
+      PYTHONUTF8: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Testcode lesen
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Python-Pakete
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Bericht und Simulatorauswahl selbst pruefen
+        run: python -m unittest -v test_mechanism test_login
+      - name: Safari aktivieren
+        if: matrix.target == 'safari'
+        run: sudo /usr/bin/safaridriver --enable
+      - name: Node fuer Appium
+        if: matrix.mobile
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Appium installieren
+        if: matrix.mobile
+        run: npm install --global appium@3.9.0
+      - name: Apple-Treiber installieren
+        if: matrix.target == 'iphone' || matrix.target == 'ipad'
+        run: appium driver install xcuitest@12.22.8
+      - name: Android-Treiber installieren
+        if: startsWith(matrix.target, 'android-')
+        run: |
+          appium driver install uiautomator2@8.7.3
+          sudo chmod a+rw /dev/kvm
+      - name: Simulator oder Emulator starten
+        if: matrix.mobile
+        run: python mobile_setup.py
+      - name: Geschuetzte Anmeldung pruefen
+        id: checks
+        env:
+          SHOP_TEST_EMAIL: ${{ secrets.SHOP_TEST_EMAIL }}
+          SHOP_TEST_PASSWORD: ${{ secrets.SHOP_TEST_PASSWORD }}
+        run: python check_login.py
+      - name: Fehlenden Testlauf kenntlich machen
+        if: always() && steps.checks.outcome != 'success' && steps.checks.outcome != 'failure'
+        run: |
+          echo '## BLOCKED: Anmeldetest wurde nicht ausgefuehrt' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Umgebungsaufbau fehlgeschlagen oder Lauf abgebrochen. Kein Login-PASS.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Mobile Prozesse beenden
+        if: always() && matrix.mobile
+        timeout-minutes: 2
+        run: |
+          pkill -f '[a]ppium' || true
+          if [[ "$RUNNER_OS" == 'macOS' ]]; then xcrun simctl shutdown all || true; fi
+          if [[ "$RUNNER_OS" == 'Linux' ]]; then "$ANDROID_HOME/platform-tools/adb" emu kill || true; fi
+
