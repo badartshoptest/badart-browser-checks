@@ -14,6 +14,8 @@ Unter **Actions** gibt es zwei getrennte Pruefungen:
 
 Workflow auswaehlen, **Run workflow**, Branch **main**, Ziel und Apple-Image
 auswaehlen, danach starten. `all` prueft acht Ziele, hoechstens vier gleichzeitig.
+Fuer den bestaetigten Intel-Mac-Weg `macos-15-intel` ausdruecklich auswaehlen;
+die Startmaske kann eine fruehere Auswahl behalten.
 `desktop`, `mobile`, `apple`, `android` oder ein einzelnes Ziel erlauben gezielte
 Wiederholungen. Dasselbe Ziel mit demselben Systemimage laeuft nur einmal gleichzeitig.
 Es gibt keinen Zeitplan und keine Hintergrundueberwachung.
@@ -97,14 +99,25 @@ Download ist als Appium-Zusatzfunktion freigegeben. Runner werden nach dem Job v
 Python-Pakete und Appium/Treiber sind versionsgebunden, Actions auf Commit-SHAs.
 Runner-Browser und Apple-Simulatoren werden vom Anbieter aktualisiert. Entfernte
 Images oder fehlgeschlagene Laufzeiten muessen gezielt repariert und nachgeprueft werden.
+Fuer Xcode 16 verwendet die Auswahl XCUITest 12.12.4 mit WDA 16.12.8; fuer Xcode 26+
+XCUITest 12.22.8. Grundlage ist die [Appium-Kompatibilitaetstabelle](https://appium.github.io/appium-xcuitest-driver/12.22/getting-started/system-requirements/).
+Die tatsaechliche Auswahl steht im Installationsprotokoll. Nicht erkannte oder aeltere
+Xcode-Versionen werden abgewiesen.
 
 Appium-Anfragen sind ausdruecklich auf 240 Sekunden je Anfrage begrenzt. Der gesamte
-Job hat ein Limit von 25 Minuten; der Simulatorstart hat eigene Zeitgrenzen.
+Anmeldetest hat ein Joblimit von 35 Minuten, die Grundpruefung 25 Minuten;
+der Simulatorstart hat eigene Zeitgrenzen. Der Apple-Testagent wird im Anmeldetest
+vorab in einem eigenen Schritt mit hoechstens 8 Minuten gebaut, damit Buildfehler
+vor jeder Verwendung der Shop-Zugangsdaten sichtbar werden. Standard ist das
+verfuegbare Intel-Mac-Image; ARM-Images bleiben gezielt auswaehlbar.
 Ein 403-Zugriffsverbot wird ohne erneute Anmeldung als BLOCKED behandelt.
 Zur Diagnose fehlender Anmeldefelder werden nur Seitentitel und Feldbezeichnungen
 vor der ersten Zugangsdaten-Eingabe erfasst, niemals Feldwerte. Konto-URL oder eine
 leere Seite allein reichen nicht als Anmeldenachweis. Nach dem Absenden werden nur
 Status und Kontoseite gelesen; der Login wird nicht automatisch erneut abgesendet.
+Bei einem Fehler waehrend des Browserstarts werden hoechstens sechs gefilterte
+Appium-Fehlerzeilen ausgegeben. Dieser Pfad liegt vor jeder Zugangsdaten-Eingabe;
+Secrets, E-Mail-Adressen und URLs werden zusaetzlich entfernt.
 
 Lokal: `python -m pip install -r requirements.txt`, danach
 `python -m unittest -v test_mechanism test_login`. Diese Selbsttests pruefen den

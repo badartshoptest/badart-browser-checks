@@ -7,6 +7,14 @@ from selenium.common.exceptions import TimeoutException
 
 
 class LoginPrivacyTests(unittest.TestCase):
+    def test_startup_log_redacts_secrets_and_addresses(self):
+        output = io.StringIO()
+        with patch('pathlib.Path.read_text', return_value='ERROR WebDriverAgent failed private@example.invalid secret-for-test https://host.invalid/path'), contextlib.redirect_stdout(output):
+            with patch.dict('os.environ', {}, clear=True):
+                check_login.startup_diagnostics('private@example.invalid', 'secret-for-test')
+        self.assertIn('WebDriverAgent', output.getvalue())
+        for value in ('private@example.invalid', 'secret-for-test', 'host.invalid'):
+            self.assertNotIn(value, output.getvalue())
     def test_explicit_access_denial_stops_before_reload_or_credentials(self):
         driver = Mock()
         driver.current_url = 'https://www.badart-shop.de/account/login'

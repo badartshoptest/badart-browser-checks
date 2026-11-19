@@ -7,10 +7,20 @@ from unittest.mock import mock_open
 from selenium.webdriver.common.by import By
 from check_shop import create_driver
 from check_shop import outcome, safe_text
-from mobile_setup import choose_ios, wait_for_android_boot
+from mobile_setup import choose_ios, wait_for_android_boot, choose_xcuitest_version
 
 
 class MechanismTests(unittest.TestCase):
+    def test_xcode_gets_a_pinned_compatible_driver(self):
+        self.assertEqual(choose_xcuitest_version('Xcode 16.4\nBuild version 16F6'), '12.12.4')
+        self.assertEqual(choose_xcuitest_version('Xcode 26.5'), '12.22.8')
+        self.assertEqual(choose_xcuitest_version('Xcode 27.0'), '12.22.8')
+
+    def test_unknown_or_old_xcode_is_not_silently_accepted(self):
+        for value in ('Xcode 15.4', 'unexpected output'):
+            with self.assertRaises(RuntimeError):
+                choose_xcuitest_version(value)
+
     def test_mobile_web_session_converts_id_to_w3c_css(self):
         with patch('check_shop.TARGET', 'android-phone'), \
                 patch('pathlib.Path.read_text', return_value=json.dumps({'browserName': 'Chrome'})), \

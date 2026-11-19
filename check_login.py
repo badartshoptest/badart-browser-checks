@@ -6,6 +6,7 @@ Never output account page text, screenshots, credentials or exception messages.
 import os
 import platform
 import time
+import re
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -38,6 +39,27 @@ def report(*parts):
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as stream:
             stream.write(message + '\n\n')
+
+
+def startup_diagnostics(email, password):
+    """Filtered framework log only when browser creation failed before any typing."""
+    try:
+        raw = Path('appium.log').read_text(errors='replace')
+    except OSError:
+        return
+    lines = []
+    for line in raw.splitlines()[-160:]:
+        if not re.search(r'error|failed|timeout|WebDriverAgent|xcodebuild|WebKit|webview|RemoteDebugger|Safari|XCTest', line, re.I):
+            continue
+        for value in (email, password):
+            if value:
+                line = line.replace(value, '[redacted]')
+        line = re.sub(r'https?://\S+|[\w.+-]+@[\w.-]+', '[redacted]', line)
+        cleaned = safe_text(line)
+        if cleaned and cleaned not in lines:
+            lines.append(cleaned)
+    for line in lines[-6:]:
+        report('Pre-credential startup diagnostic:', line)
 
 
 def login_controls(driver):
@@ -150,6 +172,8 @@ def run():
         return 0
     except Exception as exc:
         report('BLOCKED: Login acceptance incomplete; stage:', stage, '; diagnostic class:', type(exc).__name__)
+        if stage == 'browser startup':
+            startup_diagnostics(email, password)
         if driver is not None and stage == 'login result':
             try:
                 path = urlsplit(driver.current_url).path

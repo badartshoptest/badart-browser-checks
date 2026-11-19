@@ -12,6 +12,14 @@ def command(*args, **kwargs):
     return subprocess.check_output(args, text=True, timeout=600, **kwargs).strip()
 
 
+def choose_xcuitest_version(xcode_output):
+    """Pinned stacks from Appium's Xcode compatibility table."""
+    match = re.search(r'^Xcode\s+(\d+)(?:\.\d+)*', xcode_output, re.MULTILINE)
+    if not match or int(match.group(1)) < 16:
+        raise RuntimeError('Unsupported or unrecognized Xcode version')
+    return '12.12.4' if int(match.group(1)) < 26 else '12.22.8'
+
+
 def choose_ios(data, target, max_major=None):
     prefix = "iPhone" if target == "iphone" else "iPad"
     candidates = []
@@ -97,7 +105,7 @@ def main():
         print("Selected Apple simulator:", caps["appium:deviceName"], caps["appium:platformVersion"], "active SDK", sdk_version, flush=True)
         subprocess.run(["xcrun", "simctl", "boot", caps["appium:udid"]], check=True, timeout=120)
         subprocess.run(["xcrun", "simctl", "bootstatus", caps["appium:udid"], "-b"], check=True, timeout=600)
-        appium_args = ["appium", "--address", "127.0.0.1", "--port", "4723", "--log-level", "error"]
+        appium_args = ["appium", "--address", "127.0.0.1", "--port", "4723", "--log-level", "info"]
     else:
         sdk = Path(os.environ["ANDROID_HOME"])
         sdkmanager = str(sdk / "cmdline-tools/latest/bin/sdkmanager")
