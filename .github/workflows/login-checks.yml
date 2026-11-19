@@ -6,7 +6,7 @@ on:
         description: Alle Ziele oder gezielte Wiederholungspruefung
         type: choice
         options: [all, desktop, mobile, apple, android, chrome, edge, firefox, safari, iphone, ipad, android-phone, android-tablet]
-        default: apple
+        default: desktop
         required: true
       apple_runner:
         description: Kostenloses Apple-Standardimage (Version steht im Bericht)
