@@ -149,3 +149,20 @@ Der native Weg ist erst nach einem bestaetigten Lauf freigegeben. Bei fehlender
 Remote-Automation oder fehlgeschlagenen Eingaben bleibt das Ergebnis BLOCKED.
 Es werden keine Eingabewerte per JavaScript eingesetzt.
 Quelle: https://webkit.org/blog/9395/webdriver-is-coming-to-safari-in-ios-13/
+
+## Separater Checkout-Vorschaucheck (nur manuell)
+
+`python3 -m unittest -v test_checkout_smoke` prueft die Sicherheitsgrenze offline.
+Der optionale manuelle Vorschauworkflow startet standardmaessig nur diese Tests. Er
+verwendet einen kostenlosen Ubuntu-Standardrunner im freigegebenen oeffentlichen
+Originalrepo, keine Secrets, keinen Cache/Upload und keinen Zeitplan.
+
+Der ausdruecklich aktivierbare GET-Probeaufruf fuehrt keine Browser-Skripte aus
+und laedt nur Warenkorb und Bestelluebersicht bzw. fest zugelassene
+Vorstufen. Ein leerer Warenkorb, ein Login-Redirect oder eine Sperre ergibt
+keine erfolgreiche Bestelluebersicht. Selbst wenn Review-Markup sichtbar ist,
+wird kein Formular gesendet und kein Bestell-/Zahlungs-Endpunkt aufgerufen.
+Das ist kein Kundenablauf mit befuelltem Warenkorb, kein Steuer-/Versandnachweis
+und keiner Zahlungsfreigabe. Fuer diese Abschnitte ist ein abgestimmter
+Testshop/Testartikel mit Testzahlungsweg erforderlich. Keine Zugangsdaten oder
+Antworttexte werden geloggt.
