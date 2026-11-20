@@ -1,0 +1,28 @@
+name: BADART sicherer Checkout-Smoketest (Vorschau)
+on:
+  workflow_dispatch:
+    inputs:
+      check_public_routes:
+        description: Zusaetzlich oeffentliche GET-Routen ohne Bestellung abrufen
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: badart-checkout-preview
+  cancel-in-progress: false
+jobs:
+  preview:
+    if: github.repository == 'badartshoptest/badart-browser-checks' && github.event.repository.private == false && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Offline pruefen
+        run: python3 -m unittest -v test_checkout_smoke
+      - name: Oeffentliche GET-Routen pruefen
+        if: inputs.check_public_routes
+        run: python3 checkout_smoke.py
